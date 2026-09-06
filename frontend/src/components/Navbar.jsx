@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { CloudSun, Bot, Map, UserRound, LogOut } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -69,6 +70,7 @@ export default function Navbar() {
       </nav>
 
       <div className="nav-actions">
+        <ThemeToggle />
         {user ? (
           <div className="user-profile-badge">
             <span className="user-greeting">
