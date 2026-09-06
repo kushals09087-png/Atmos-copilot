@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "usr_mtpahvx6433k",
+    "name": "Test User",
+    "email": "test@example.com",
+    "password": "$2a$12$5QJWjkt6G1cd9Ssg8zcileTbDmmFIyYmFTGrWltxBh09QQpoulOq6",
+    "createdAt": "2026-09-06T04:06:22.938Z"
+  },
+  {
+    "_id": "usr_mtpamo2dw4qm",
+    "name": "Browser Test",
+    "email": "browser_test@example.com",
+    "password": "$2a$12$hl3a5wBFGdE92LX5AYVAC.7TeYMv7Kt0pPdfUNLU0qnWI/WQLkZUO",
+    "createdAt": "2026-09-06T04:10:06.037Z"
+  }
+]
