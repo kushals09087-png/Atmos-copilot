@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, MapPin, Navigation, Radio, X, Clock, Check, Sparkles, Globe } from "lucide-react";
-import { reverseGeocode } from "../utils/telemetryData";
+import { reverseGeocode, acquireUserGeolocation } from "../utils/telemetryData";
 
 export const POPULAR_LOCATIONS = [
   { name: "Bengaluru, Karnataka", lat: 12.9716, lon: 77.5946, tag: "HQ Station" },
@@ -40,7 +40,7 @@ export default function LocationModal({ isOpen, onClose, onSelectLocation, curre
     }
   }, [isOpen]);
 
-  // Live search using OpenStreetMap Nominatim
+  // Live search using OpenStreetMap Nominatim or direct coordinate entry
   function handleQueryChange(e) {
     const val = e.target.value;
     setQuery(val);
@@ -51,6 +51,37 @@ export default function LocationModal({ isOpen, onClose, onSelectLocation, curre
       setResults([]);
       setLoading(false);
       return;
+    }
+
+    // Direct exact coordinate detection (e.g. "12.9716, 77.5946" or "12.971598 77.594562")
+    const coordMatch = val.trim().match(/^(-?\d+(\.\d+)?)\s*[, ]\s*(-?\d+(\.\d+)?)$/);
+    if (coordMatch) {
+      const cLat = parseFloat(coordMatch[1]);
+      const cLon = parseFloat(coordMatch[3]);
+      if (cLat >= -90 && cLat <= 90 && cLon >= -180 && cLon <= 180) {
+        setLoading(true);
+        searchTimeoutRef.current = setTimeout(async () => {
+          try {
+            const label = await reverseGeocode(cLat, cLon);
+            setResults([{
+              lat: cLat,
+              lon: cLon,
+              display_name: `${label || "Exact Coordinates"} (${cLat.toFixed(5)}°N, ${cLon.toFixed(5)}°E)`,
+              isExactCoords: true
+            }]);
+          } catch (e) {
+            setResults([{
+              lat: cLat,
+              lon: cLon,
+              display_name: `Exact Coordinates: ${cLat.toFixed(5)}°N, ${cLon.toFixed(5)}°E`,
+              isExactCoords: true
+            }]);
+          } finally {
+            setLoading(false);
+          }
+        }, 200);
+        return;
+      }
     }
 
     setLoading(true);
@@ -78,7 +109,7 @@ export default function LocationModal({ isOpen, onClose, onSelectLocation, curre
     }, 350);
   }
 
-  function handleSelect(lat, lon, label) {
+  function handleSelect(lat, lon, label, accuracy = null) {
     const parsedLat = parseFloat(lat);
     const parsedLon = parseFloat(lon);
 
@@ -89,51 +120,50 @@ export default function LocationModal({ isOpen, onClose, onSelectLocation, curre
     localStorage.setItem("atmos_recent_locs", JSON.stringify(updatedRecents));
 
     if (onSelectLocation) {
-      onSelectLocation(parsedLat, parsedLon, label);
+      onSelectLocation(parsedLat, parsedLon, label, accuracy);
     }
     onClose();
   }
 
-  // Acquire hardware GPS
+  // Acquire hardware GPS / Network / IP location
   async function handleAcquireGps() {
-    if (!("geolocation" in navigator)) {
-      setGpsMessage("Geolocation not supported by browser");
-      return;
-    }
-
     setGpsAcquiring(true);
-    setGpsMessage("Locking hardware satellites...");
+    setGpsMessage("Locking satellites & precision WiFi triangulation...");
 
     try {
-      const pos = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 8000,
-          maximumAge: 0
-        });
-      });
+      const geo = await acquireUserGeolocation();
+      if (geo.permissionDenied) {
+        setGpsMessage("⚠️ Location permission blocked in browser. Allow location in address bar or type exact address.");
+        setTimeout(() => setGpsAcquiring(false), 3500);
+        return;
+      }
 
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      const accuracy = pos.coords.accuracy ? `±${Math.round(pos.coords.accuracy)}m` : "";
+      const lat = geo.lat;
+      const lon = geo.lon;
+      const accuracy = geo.accuracy ? `±${geo.accuracy}m` : "";
 
-      setGpsMessage(`Satellite fix locked (${accuracy})! Synchronizing...`);
+      setGpsMessage(`Exact fix locked (${accuracy || "Hardware GPS"})! Synchronizing station...`);
 
-      // Reverse geocode using unified Google-level zoning node resolution
+      let label = geo.formatted || geo.city;
       try {
-        const label = await reverseGeocode(lat, lon);
-        if (label) {
-          setTimeout(() => handleSelect(lat, lon, label), 350);
-          return;
+        const rev = await reverseGeocode(lat, lon);
+        if (rev && !rev.startsWith("Coordinates:")) {
+          label = rev;
         }
       } catch (geoErr) {
         console.warn("Location modal reverse geocode fallback:", geoErr);
       }
 
-      setTimeout(() => handleSelect(lat, lon, `${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E Station`), 350);
+      if (!label) {
+        label = `${lat.toFixed(5)}°N, ${lon.toFixed(5)}°E Station`;
+      }
+
+      setTimeout(() => {
+        handleSelect(lat, lon, label, geo.accuracy);
+      }, 400);
     } catch (err) {
       console.warn("GPS acquire error:", err);
-      setGpsMessage("GPS permission denied or timed out. Defaulting to station coordinates.");
+      setGpsMessage("GPS timed out or unavailable. Defaulting to station coordinates.");
       setTimeout(() => setGpsAcquiring(false), 2000);
     }
   }
@@ -186,7 +216,7 @@ export default function LocationModal({ isOpen, onClose, onSelectLocation, curre
             disabled={gpsAcquiring}
           >
             <Navigation size={16} className={gpsAcquiring ? "spin" : "pulse text-cyan"} />
-            <span>{gpsAcquiring ? "Triangulating Satellites..." : "Detect My Location (Hardware GPS)"}</span>
+            <span>{gpsAcquiring ? "Locking Satellites & Network Triangulation..." : "Acquire Exact GPS Fix 🎯"}</span>
           </button>
           {gpsMessage && <div className="gps-feedback-msg">{gpsMessage}</div>}
         </div>
@@ -201,19 +231,19 @@ export default function LocationModal({ isOpen, onClose, onSelectLocation, curre
                   key={idx}
                   type="button"
                   className="search-result-row"
-                  onClick={() => handleSelect(item.lat, item.lon, item.display_name.split(",").slice(0, 2).join(","))}
+                  onClick={() => handleSelect(item.lat, item.lon, item.display_name.split(",").slice(0, 3).join(", "))}
                 >
                   <MapPin size={16} className="text-cyan flex-shrink" />
                   <div className="result-text-box">
                     <span className="result-main-name">
-                      {item.display_name.split(",")[0]}
+                      {item.isExactCoords ? "🎯 " : ""}{item.display_name.split(",")[0]}
                     </span>
                     <span className="result-sub-name">
-                      {item.display_name.split(",").slice(1, 4).join(",")}
+                      {item.display_name.split(",").slice(1, 4).join(", ")}
                     </span>
                   </div>
                   <span className="result-coords font-mono">
-                    {parseFloat(item.lat).toFixed(2)}°, {parseFloat(item.lon).toFixed(2)}°
+                    {parseFloat(item.lat).toFixed(5)}°, {parseFloat(item.lon).toFixed(5)}°
                   </span>
                 </button>
               ))}

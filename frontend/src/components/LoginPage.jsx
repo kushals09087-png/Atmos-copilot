@@ -28,7 +28,7 @@ import ThemeToggle from "./ThemeToggle";
 import AtmosLogo from "./AtmosLogo";
 import StartingPageAtmosphere, { AtmosphereControls } from "./StartingPageAtmosphere";
 import { authApi } from "../services/api";
-import { reverseGeocode } from "../utils/telemetryData";
+import { reverseGeocode, acquireUserGeolocation } from "../utils/telemetryData";
 
 // Strict validation patterns
 const NAME_STRICT_REGEX = /^[a-zA-Z\s.'-]{2,50}$/;
@@ -267,24 +267,25 @@ export default function LoginPage({ onAuthorized }) {
     setLoading(true);
     setGpsStatus("Acquiring hardware GPS satellite fix...");
 
-    // Try reading hardware GPS
+    // Acquire geolocation via multi-tiered resolver (GPS / WiFi / IP)
     let userCoords = { lat: 12.9716, lon: 77.5946 };
     let userLocality = "Bengaluru, Karnataka";
-    if ("geolocation" in navigator) {
+    try {
+      const geo = await acquireUserGeolocation();
+      userCoords = { lat: geo.lat, lon: geo.lon };
+      userLocality = geo.formatted || geo.city || "Bengaluru, Karnataka";
       try {
-        const pos = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 5000,
-            enableHighAccuracy: true
-          });
-        });
-        userCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        userLocality = await reverseGeocode(userCoords.lat, userCoords.lon);
-        setGpsStatus(`GPS fix locked: ${userLocality}`);
-      } catch (gpsErr) {
-        console.warn("GPS acquire fallback to default:", gpsErr);
-        setGpsStatus("Defaulting to station coordinates");
+        const rev = await reverseGeocode(userCoords.lat, userCoords.lon);
+        if (rev && !rev.startsWith("Coordinates:")) {
+          userLocality = rev;
+        }
+      } catch (revErr) {
+        console.warn("Reverse geocode warning:", revErr);
       }
+      setGpsStatus(`GPS fix locked: ${userLocality}`);
+    } catch (gpsErr) {
+      console.warn("GPS acquire fallback to default:", gpsErr);
+      setGpsStatus("Defaulting to station coordinates");
     }
 
     // Backend authentication attempt

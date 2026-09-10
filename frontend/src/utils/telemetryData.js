@@ -404,43 +404,54 @@ export const agricultureDistricts = [
 function formatGoogleLikeAddress(addr) {
   if (!addr) return null;
 
-  // 1. High-priority zoning nodes (Industrial, Commercial, Tech Parks, Specific Landmarks)
-  const zoningNode =
-    addr.industrial ||
-    addr.commercial ||
-    addr.retail ||
-    addr.business ||
-    addr.office ||
+  // 1. Specific landmark / POI / shop / building / amenity
+  const poi =
+    addr.building ||
     addr.amenity ||
-    addr.quarter ||
+    addr.shop ||
+    addr.office ||
+    addr.tourism ||
+    addr.leisure ||
+    addr.historic ||
+    addr.place ||
+    "";
+
+  // 2. Exact street or road with house number
+  const houseNum = addr.house_number ? `#${addr.house_number}` : "";
+  const road = addr.road || addr.pedestrian || addr.street || addr.footway || "";
+  const thoroughfare = [houseNum, road].filter(Boolean).join(" ");
+
+  // 3. Colony / Suburb / Neighbourhood / Quarter
+  const suburb =
     addr.suburb ||
     addr.neighbourhood ||
+    addr.quarter ||
     addr.residential ||
+    addr.commercial ||
+    addr.industrial ||
     addr.village ||
     addr.hamlet ||
-    addr.town ||
-    addr.isolated_dwelling ||
-    addr.road;
+    "";
 
-  // 2. Secondary administrative nodes (Taluk, District, City)
-  const adminNode =
-    addr.city ||
-    addr.county || // Taluk (e.g. Channagiri taluku, Bangalore South)
-    addr.state_district || // District (e.g. Davanagere, Bengaluru Urban)
-    addr.city_district ||
-    addr.municipality ||
-    addr.district;
-
-  // 3. State / Province
-  const stateNode = addr.state || "";
+  // 4. Administrative City / Town
+  const city = addr.city || addr.town || addr.municipality || "";
+  const district = addr.state_district || addr.district || addr.county || "";
+  const state = addr.state || "";
 
   const parts = [];
-  if (zoningNode) parts.push(zoningNode);
-  if (adminNode && (!zoningNode || !zoningNode.toLowerCase().includes(adminNode.toLowerCase()))) {
-    parts.push(adminNode);
+  if (poi) parts.push(poi);
+  if (thoroughfare && !parts.some(p => p.toLowerCase().includes(thoroughfare.toLowerCase()))) {
+    parts.push(thoroughfare);
   }
-  if (stateNode && (!adminNode || !adminNode.toLowerCase().includes(stateNode.toLowerCase()))) {
-    parts.push(stateNode);
+  if (suburb && !parts.some(p => p.toLowerCase().includes(suburb.toLowerCase()))) {
+    parts.push(suburb);
+  }
+  const adminCity = city || district;
+  if (adminCity && !parts.some(p => p.toLowerCase().includes(adminCity.toLowerCase()))) {
+    parts.push(adminCity);
+  }
+  if (state && !parts.some(p => p.toLowerCase().includes(state.toLowerCase()))) {
+    parts.push(state);
   }
 
   return parts.length > 0 ? parts.join(", ") : null;
@@ -529,6 +540,204 @@ export async function reverseGeocode(lat, lon) {
 
   // Final deterministic fallback: Coordinates station lock (never hardcode wrong city)
   return `${numericLat.toFixed(4)}°N, ${numericLon.toFixed(4)}°E Station`;
+}
+
+/**
+ * Multi-Tiered Geolocation Resolver:
+ * Tier 1: Hardware GPS (enableHighAccuracy: true, timeout: 4500ms)
+ * Tier 2: Network / WiFi BSSID (enableHighAccuracy: false, timeout: 6000ms, maximumAge: 300000)
+ * Tier 3: Backend IP Proxy (/api/location/ip)
+ * Tier 4: Direct Client IP (ipapi.co, ipwho.is)
+ * Tier 5: Fallback station
+ */
+export async function acquireUserGeolocation() {
+  let permissionDenied = false;
+
+  // Step 1: Browser Exact Geolocation via High-Accuracy Watch Position
+  if (typeof navigator !== "undefined" && "geolocation" in navigator) {
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        let bestPos = null;
+        let watchId = null;
+        let timer = null;
+
+        const cleanup = () => {
+          if (watchId !== null) {
+            try { navigator.geolocation.clearWatch(watchId); } catch(e) {}
+            watchId = null;
+          }
+          if (timer !== null) {
+            clearTimeout(timer);
+            timer = null;
+          }
+        };
+
+        // Allow up to 9.5s for multi-satellite / WiFi convergence
+        timer = setTimeout(() => {
+          cleanup();
+          if (bestPos) {
+            resolve(bestPos);
+          } else {
+            reject(new Error("Exact GPS lock timed out"));
+          }
+        }, 9500);
+
+        try {
+          watchId = navigator.geolocation.watchPosition(
+            (position) => {
+              if (position?.coords?.latitude && position?.coords?.longitude) {
+                const acc = position.coords.accuracy || 9999;
+                if (!bestPos || acc < (bestPos.coords.accuracy || 9999)) {
+                  bestPos = position;
+                }
+                // Pinpoint fix: accuracy <= 25m is exact hardware satellite / multi-BSSID WiFi lock
+                if (acc <= 25) {
+                  cleanup();
+                  resolve(position);
+                }
+              }
+            },
+            (err) => {
+              if (err.code === 1 /* PERMISSION_DENIED */) {
+                permissionDenied = true;
+                cleanup();
+                reject(err);
+              }
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 9500,
+              maximumAge: 0 // NO CACHING: Force fresh hardware measurement
+            }
+          );
+        } catch (e) {
+          cleanup();
+          reject(e);
+        }
+      });
+
+      const lat = parseFloat(Number(pos.coords.latitude).toFixed(6));
+      const lon = parseFloat(Number(pos.coords.longitude).toFixed(6));
+      const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+
+      return {
+        lat,
+        lon,
+        accuracy: acc,
+        source: acc && acc <= 50 ? "hardware_exact_gps" : "network_wifi_triangulation",
+        isExact: true,
+        permissionDenied: false
+      };
+    } catch (highAccErr) {
+      console.warn("High-accuracy positioning note:", highAccErr?.message || highAccErr);
+      if (highAccErr?.code === 1) {
+        permissionDenied = true;
+      }
+    }
+
+    // 1b: Quick fallback to standard network geolocation (if permission wasn't explicitly denied)
+    if (!permissionDenied) {
+      try {
+        const netPos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 5000,
+            maximumAge: 0
+          });
+        });
+        const lat = parseFloat(Number(netPos.coords.latitude).toFixed(6));
+        const lon = parseFloat(Number(netPos.coords.longitude).toFixed(6));
+        const acc = netPos.coords.accuracy ? Math.round(netPos.coords.accuracy) : null;
+        return {
+          lat,
+          lon,
+          accuracy: acc,
+          source: "network_wifi",
+          isExact: true,
+          permissionDenied: false
+        };
+      } catch (netErr) {
+        if (netErr?.code === 1) permissionDenied = true;
+      }
+    }
+  }
+
+  // Step 2: Backend IP Geolocation Proxy (bypasses browser CORS & provides fallback)
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch("/api/location/ip", { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const d = await res.json();
+      if (d.lat && d.lon) {
+        return {
+          lat: parseFloat(Number(d.lat).toFixed(6)),
+          lon: parseFloat(Number(d.lon).toFixed(6)),
+          city: d.city,
+          formatted: d.formatted,
+          source: d.source || "ip_proxy",
+          isExact: false,
+          permissionDenied
+        };
+      }
+    }
+  } catch (backendErr) {
+    console.warn("Backend IP geolocation proxy error:", backendErr);
+  }
+
+  // Step 3: Direct Client-Side IP Services
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch("https://ipapi.co/json/", { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const d = await res.json();
+      if (d.latitude && d.longitude) {
+        return {
+          lat: parseFloat(Number(d.latitude).toFixed(6)),
+          lon: parseFloat(Number(d.longitude).toFixed(6)),
+          city: d.city,
+          formatted: [d.city, d.region, d.country_name].filter(Boolean).join(", "),
+          source: "client_ip",
+          isExact: false,
+          permissionDenied
+        };
+      }
+    }
+  } catch (e1) {}
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch("https://ipwho.is/", { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const d = await res.json();
+      if (d.latitude && d.longitude) {
+        return {
+          lat: parseFloat(Number(d.latitude).toFixed(6)),
+          lon: parseFloat(Number(d.longitude).toFixed(6)),
+          city: d.city,
+          formatted: [d.city, d.region, d.country].filter(Boolean).join(", "),
+          source: "client_ip",
+          isExact: false,
+          permissionDenied
+        };
+      }
+    }
+  } catch (e2) {}
+
+  // Step 4: Deterministic station default
+  return {
+    lat: 12.9716,
+    lon: 77.5946,
+    formatted: "Bengaluru, Karnataka (Station HQ)",
+    source: "default_station",
+    isExact: false,
+    permissionDenied
+  };
 }
 
 export async function fetchTelemetryData(lat, lon, resolvedCity = null) {

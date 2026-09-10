@@ -18,7 +18,8 @@ import Footer from "./components/Footer";
 import {
   fetchTelemetryData,
   fetchEnvironmentalData,
-  reverseGeocode
+  reverseGeocode,
+  acquireUserGeolocation
 } from "./utils/telemetryData";
 
 export default function App() {
@@ -122,34 +123,75 @@ export default function App() {
   }
 
   async function handleRefreshGps() {
-    if ("geolocation" in navigator) {
+    setLoadingTelemetry(true);
+    try {
+      const geo = await acquireUserGeolocation();
+      const newCoords = {
+        lat: geo.lat,
+        lon: geo.lon,
+        accuracy: geo.accuracy,
+        isExact: geo.isExact,
+        source: geo.source
+      };
+
+      let newLocality = geo.formatted || geo.city;
       try {
-        setLoadingTelemetry(true);
-        const pos = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 6000,
-            enableHighAccuracy: true
-          });
-        });
-        const newCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        const newLocality = await reverseGeocode(newCoords.lat, newCoords.lon);
-        setCoords(newCoords);
-        setWeather(prev => prev ? { ...prev, resolved_city: newLocality } : { resolved_city: newLocality });
-        if (user) {
-          const updatedUser = { ...user, coords: newCoords, locality: newLocality };
-          setUser(updatedUser);
-          localStorage.setItem("atmos_user", JSON.stringify(updatedUser));
+        const rev = await reverseGeocode(newCoords.lat, newCoords.lon);
+        if (rev && !rev.startsWith("Coordinates:")) {
+          newLocality = rev;
         }
-      } catch (e) {
-        console.warn("GPS refresh error:", e);
-      } finally {
-        setLoadingTelemetry(false);
+      } catch (geoErr) {
+        console.warn("Reverse geocode warning:", geoErr);
       }
+
+      if (!newLocality) {
+        newLocality = `${newCoords.lat.toFixed(5)}°N, ${newCoords.lon.toFixed(5)}°E`;
+      }
+
+      setCoords(newCoords);
+      setWeather(prev => prev ? { ...prev, resolved_city: newLocality } : { resolved_city: newLocality });
+
+      // Immediate telemetry refresh
+      try {
+        const [wData, eData] = await Promise.all([
+          fetchTelemetryData(newCoords.lat, newCoords.lon, newLocality),
+          fetchEnvironmentalData(newCoords.lat, newCoords.lon)
+        ]);
+        if (wData) setWeather(wData);
+        if (eData) setEnvData(eData);
+      } catch (fetchErr) {
+        console.warn("Telemetry refresh error:", fetchErr);
+      }
+
+      if (user) {
+        const updatedUser = { ...user, coords: newCoords, locality: newLocality };
+        setUser(updatedUser);
+        localStorage.setItem("atmos_user", JSON.stringify(updatedUser));
+      }
+
+      return {
+        coords: newCoords,
+        locality: newLocality,
+        source: geo.source,
+        isExact: geo.isExact,
+        accuracy: geo.accuracy,
+        permissionDenied: geo.permissionDenied
+      };
+    } catch (e) {
+      console.warn("GPS refresh error:", e);
+      return null;
+    } finally {
+      setLoadingTelemetry(false);
     }
   }
 
-  async function handleSelectLocation(newLat, newLon, label) {
-    const newCoords = { lat: newLat, lon: newLon };
+  async function handleSelectLocation(newLat, newLon, label, accuracy = null) {
+    const newCoords = {
+      lat: parseFloat(newLat),
+      lon: parseFloat(newLon),
+      accuracy,
+      isExact: true
+    };
     setCoords(newCoords);
     let resolvedLabel = label;
     if (!resolvedLabel) {

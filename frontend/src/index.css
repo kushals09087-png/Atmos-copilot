@@ -1783,6 +1783,13 @@ nav {
   transform: translateY(-1px);
 }
 
+.header-actions-cluster .gps-refresh-btn.locate-success-btn {
+  background: rgba(16, 185, 129, 0.14) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #10b981 !important;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
+}
+
 [data-theme="light"] .header-actions-cluster .location-action-btn,
 .theme-light .header-actions-cluster .location-action-btn {
   background: rgba(2, 132, 199, 0.08);

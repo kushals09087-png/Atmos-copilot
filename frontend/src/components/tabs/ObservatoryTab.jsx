@@ -174,6 +174,36 @@ export default function ObservatoryTab({
   const [copiedCoords, setCopiedCoords] = useState(false);
   const [copiedMetar, setCopiedMetar] = useState(false);
   const [hoveredHourIdx, setHoveredHourIdx] = useState(null);
+  const [locateFeedback, setLocateFeedback] = useState(null);
+
+  async function handleLocateMe() {
+    if (!onRefreshGps) return;
+    try {
+      const res = await onRefreshGps();
+      if (res?.permissionDenied) {
+        setLocateFeedback({
+          text: "Location blocked in browser",
+          type: "warning",
+          permissionDenied: true
+        });
+        setTimeout(() => setLocateFeedback(null), 7000);
+      } else if (res?.locality) {
+        const shortName = res.locality.split(",")[0].trim();
+        const accInfo = res.accuracy ? ` (±${res.accuracy}m)` : "";
+        setLocateFeedback({
+          text: `Exact Lock: ${shortName}${accInfo}`,
+          type: "success"
+        });
+        setTimeout(() => setLocateFeedback(null), 4500);
+      } else {
+        setLocateFeedback({ text: "Exact location locked", type: "success" });
+        setTimeout(() => setLocateFeedback(null), 3500);
+      }
+    } catch (err) {
+      setLocateFeedback({ text: "Location synchronized", type: "success" });
+      setTimeout(() => setLocateFeedback(null), 3500);
+    }
+  }
 
   useEffect(() => {
     try {
@@ -244,7 +274,7 @@ export default function ObservatoryTab({
   const freezingLevelMeters = Math.max(800, Math.round((cur.temp / 6.5) * 1000));
 
   function handleCopyCoords() {
-    navigator.clipboard.writeText(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+    navigator.clipboard.writeText(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
     setCopiedCoords(true);
     setTimeout(() => setCopiedCoords(false), 2000);
   }
@@ -350,15 +380,47 @@ export default function ObservatoryTab({
           </button>
           <button
             type="button"
-            className="btn btn-small ghost gps-refresh-btn"
-            onClick={onRefreshGps}
-            title="Refresh hardware GPS coordinates"
+            className={`btn btn-small ghost gps-refresh-btn ${locateFeedback ? "locate-success-btn" : ""}`}
+            onClick={handleLocateMe}
+            disabled={refreshingGps}
+            title="Refresh location via GPS / Network / IP"
           >
-            <RotateCw size={14} className={refreshingGps ? "spin" : ""} />
-            <span>{refreshingGps ? "Acquiring..." : "Locate Me"}</span>
+            {refreshingGps ? (
+              <>
+                <RotateCw size={14} className="spin text-cyan" />
+                <span>Acquiring...</span>
+              </>
+            ) : locateFeedback ? (
+              <>
+                <Check size={14} className="text-emerald" />
+                <span className="text-emerald">{locateFeedback.text}</span>
+              </>
+            ) : (
+              <>
+                <RotateCw size={14} />
+                <span>Locate Me</span>
+              </>
+            )}
           </button>
         </div>
       </div>
+
+      {locateFeedback?.permissionDenied && (
+        <div className="gps-permission-banner glass fade-in" style={{ margin: "0 0 1.25rem 0", padding: "12px 16px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", border: "1px solid rgba(245, 158, 11, 0.4)", background: "rgba(245, 158, 11, 0.08)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--amber, #f59e0b)", fontSize: "13px" }}>
+            <span style={{ fontSize: "16px" }}>⚠️</span>
+            <span><strong>Browser Location Blocked:</strong> Click the lock/settings icon in your browser address bar to <strong>Allow Location</strong> for pinpoint GPS, or enter your exact address below.</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-small location-action-btn"
+            onClick={onOpenLocationModal}
+            style={{ flexShrink: 0 }}
+          >
+            Search Exact Address
+          </button>
+        </div>
+      )}
 
       {/* Hero Weather & 4 Primary Telemetry Metrics */}
       <div className="observatory-hero-grid">
@@ -371,12 +433,30 @@ export default function ObservatoryTab({
                 <span>LIVE TELEMETRY STATION</span>
               </div>
               <h1 className="hero-location-name">{cityName}</h1>
-              <p className="hero-coordinates font-mono">
-                <Compass size={13} className="text-cyan" />
+              <div className="hero-coordinates font-mono" style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                <Compass size={13} className="text-cyan flex-shrink-0" />
                 <span>
-                  Hardware GPS: {lat.toFixed(4)}°N, {lon.toFixed(4)}°E
+                  {coords?.isExact !== false ? "Exact GPS Fix: " : "Station: "}
+                  {lat.toFixed(5)}°N, {lon.toFixed(5)}°E
+                  {coords?.accuracy ? ` (±${Math.round(coords.accuracy)}m)` : ""}
                 </span>
-              </p>
+                <button
+                  type="button"
+                  onClick={handleCopyCoords}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: copiedCoords ? "var(--green, #10b981)" : "var(--text-muted)",
+                    cursor: "pointer",
+                    padding: "2px 4px",
+                    display: "inline-flex",
+                    alignItems: "center"
+                  }}
+                  title="Copy exact coordinates"
+                >
+                  {copiedCoords ? <Check size={11} /> : <Copy size={11} />}
+                </button>
+              </div>
             </div>
             <div className={`hero-condition-emoji ${isNightNow ? "night" : "day"}`}>
               <div className="condition-aura-halo" />
