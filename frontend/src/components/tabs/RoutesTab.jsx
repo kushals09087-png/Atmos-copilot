@@ -4,16 +4,16 @@ import { formatDigits } from "../../utils/telemetryData";
 
 export default function RoutesTab({ weather, lang = "en" }) {
   const [startLoc, setStartLoc] = useState(weather?.resolved_city || "Bengaluru, Karnataka");
-  const [destLoc, setDestLoc] = useState("Kodagu, Karnataka");
+  const [destLoc, setDestLoc] = useState("Davanagere, Karnataka");
   const [isCalculating, setIsCalculating] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [routeData, setRouteData] = useState({
-    distance: "248.5 km",
-    duration: "5h 15m",
+    distance: "260.4 km",
+    duration: "4h 45m",
     startName: "Bengaluru",
-    destName: "Kodagu",
+    destName: "Davanagere",
     startWeather: { temp: 27, wind: 9, visibility: 10, rainProb: 10, risk: "Low Risk" },
-    destWeather: { temp: 22, wind: 14, visibility: 8, rainProb: 35, risk: "Low Risk" },
+    destWeather: { temp: 29, wind: 12, visibility: 10, rainProb: 15, risk: "Low Risk" },
     overallRisk: "Low Risk",
     hazardNote: "Good roadway visibility across the corridor. Normal highway driving conditions."
   });
@@ -148,7 +148,7 @@ export default function RoutesTab({ weather, lang = "en" }) {
                 type="text"
                 value={destLoc}
                 onChange={e => setDestLoc(e.target.value)}
-                placeholder="e.g. Kodagu"
+                placeholder="e.g. Davanagere"
               />
             </div>
           </div>

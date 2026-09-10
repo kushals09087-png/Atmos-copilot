@@ -12,6 +12,9 @@ import AlertsTab from "./components/tabs/AlertsTab";
 import HistoryTab from "./components/tabs/HistoryTab";
 import SettingsTab from "./components/tabs/SettingsTab";
 import BackgroundVideo from "./components/BackgroundVideo";
+import LocationModal from "./components/LocationModal";
+import TabErrorBoundary from "./components/TabErrorBoundary";
+import Footer from "./components/Footer";
 import {
   fetchTelemetryData,
   fetchEnvironmentalData,
@@ -22,11 +25,15 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("home");
   const [lang, setLang] = useState(() => localStorage.getItem("atmos_lang") || "en");
-  const [bgTheme, setBgTheme] = useState(() => localStorage.getItem("atmos_bg_theme") || "mountains");
+  const [bgTheme, setBgTheme] = useState(() => {
+    const saved = localStorage.getItem("atmos_bg_theme");
+    return saved && saved !== "mountains" ? saved : "auto";
+  });
   const [coords, setCoords] = useState({ lat: 12.9716, lon: 77.5946 });
   const [weather, setWeather] = useState(null);
   const [envData, setEnvData] = useState(null);
   const [loadingTelemetry, setLoadingTelemetry] = useState(true);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   // Check authentication status
   useEffect(() => {
@@ -38,6 +45,9 @@ export default function App() {
           setUser(parsed);
           if (parsed.coords?.lat && parsed.coords?.lon) {
             setCoords(parsed.coords);
+          }
+          if (parsed.locality) {
+            setWeather(prev => prev ? { ...prev, resolved_city: parsed.locality } : { resolved_city: parsed.locality });
           }
         } catch {
           setUser(null);
@@ -88,10 +98,18 @@ export default function App() {
     };
   }, [user, coords.lat, coords.lon]);
 
-  function handleLoginSuccess(authenticatedUser, acquiredCoords) {
+  // Keep scroll position at top whenever active tab changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeTab]);
+
+  function handleLoginSuccess(authenticatedUser, acquiredCoords, acquiredLocality) {
     setUser(authenticatedUser);
     if (acquiredCoords) {
       setCoords(acquiredCoords);
+    }
+    if (acquiredLocality) {
+      setWeather(prev => prev ? { ...prev, resolved_city: acquiredLocality } : { resolved_city: acquiredLocality });
     }
   }
 
@@ -106,6 +124,7 @@ export default function App() {
   async function handleRefreshGps() {
     if ("geolocation" in navigator) {
       try {
+        setLoadingTelemetry(true);
         const pos = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             timeout: 6000,
@@ -113,15 +132,36 @@ export default function App() {
           });
         });
         const newCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        const newLocality = await reverseGeocode(newCoords.lat, newCoords.lon);
         setCoords(newCoords);
+        setWeather(prev => prev ? { ...prev, resolved_city: newLocality } : { resolved_city: newLocality });
         if (user) {
-          const updatedUser = { ...user, coords: newCoords };
+          const updatedUser = { ...user, coords: newCoords, locality: newLocality };
           setUser(updatedUser);
           localStorage.setItem("atmos_user", JSON.stringify(updatedUser));
         }
       } catch (e) {
         console.warn("GPS refresh error:", e);
+      } finally {
+        setLoadingTelemetry(false);
       }
+    }
+  }
+
+  async function handleSelectLocation(newLat, newLon, label) {
+    const newCoords = { lat: newLat, lon: newLon };
+    setCoords(newCoords);
+    let resolvedLabel = label;
+    if (!resolvedLabel) {
+      resolvedLabel = await reverseGeocode(newLat, newLon);
+    }
+    if (resolvedLabel) {
+      setWeather(prev => prev ? { ...prev, resolved_city: resolvedLabel } : { resolved_city: resolvedLabel });
+    }
+    if (user) {
+      const updatedUser = { ...user, coords: newCoords, locality: resolvedLabel || user.locality };
+      setUser(updatedUser);
+      localStorage.setItem("atmos_user", JSON.stringify(updatedUser));
     }
   }
 
@@ -148,6 +188,15 @@ export default function App() {
         weather={weather}
       />
 
+      {/* Global Location & GPS Search Modal */}
+      <LocationModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        onSelectLocation={handleSelectLocation}
+        currentCoords={coords}
+        currentCity={weather?.resolved_city}
+      />
+
       {/* 10-Tab Navigation Header */}
       <Navbar
         activeTab={activeTab}
@@ -156,101 +205,112 @@ export default function App() {
         onLogout={handleLogout}
         weather={weather}
         coords={coords}
+        onOpenLocationModal={() => setIsLocationModalOpen(true)}
         lang={lang}
       />
 
       {/* Main Content Area */}
       <main className="main-content-layout">
-        <div className="tab-viewport-container">
-          {activeTab === "home" && (
-            <ObservatoryTab
-              weather={weather}
-              envData={envData}
-              coords={coords}
-              lang={lang}
-              onRefreshGps={handleRefreshGps}
-              loading={loadingTelemetry}
-            />
-          )}
+        <TabErrorBoundary key={activeTab}>
+          <div className="tab-viewport-container">
+            {activeTab === "home" && (
+              <ObservatoryTab
+                weather={weather}
+                envData={envData}
+                coords={coords}
+                lang={lang}
+                onRefreshGps={handleRefreshGps}
+                onOpenLocationModal={() => setIsLocationModalOpen(true)}
+                refreshingGps={loadingTelemetry}
+                onNavigateTab={setActiveTab}
+              />
+            )}
 
-          {activeTab === "satellite" && (
-            <SatelliteTab
-              weather={weather}
-              coords={coords}
-              lang={lang}
-            />
-          )}
+            {activeTab === "satellite" && (
+              <SatelliteTab
+                weather={weather}
+                coords={coords}
+                lang={lang}
+                onSelectLocation={handleSelectLocation}
+                onOpenLocationModal={() => setIsLocationModalOpen(true)}
+              />
+            )}
 
-          {activeTab === "copilot" && (
-            <SunCopilotTab
-              weather={weather}
-              coords={coords}
-              lang={lang}
-            />
-          )}
+            {activeTab === "copilot" && (
+              <SunCopilotTab
+                weather={weather}
+                coords={coords}
+                lang={lang}
+                onNavigateTab={setActiveTab}
+              />
+            )}
 
-          {activeTab === "agri" && (
-            <AgriTab
-              weather={weather}
-              coords={coords}
-              lang={lang}
-            />
-          )}
+            {activeTab === "agri" && (
+              <AgriTab
+                weather={weather}
+                coords={coords}
+                lang={lang}
+              />
+            )}
 
-          {activeTab === "routes" && (
-            <RoutesTab
-              weather={weather}
-              coords={coords}
-              lang={lang}
-            />
-          )}
+            {activeTab === "routes" && (
+              <RoutesTab
+                weather={weather}
+                coords={coords}
+                lang={lang}
+              />
+            )}
 
-          {activeTab === "disaster" && (
-            <DisasterTab
-              weather={weather}
-              coords={coords}
-              lang={lang}
-            />
-          )}
+            {activeTab === "disaster" && (
+              <DisasterTab
+                weather={weather}
+                coords={coords}
+                lang={lang}
+              />
+            )}
 
-          {activeTab === "climate" && (
-            <ClimateTab
-              weather={weather}
-              coords={coords}
-              lang={lang}
-            />
-          )}
+            {activeTab === "climate" && (
+              <ClimateTab
+                weather={weather}
+                coords={coords}
+                lang={lang}
+              />
+            )}
 
-          {activeTab === "alerts" && (
-            <AlertsTab
-              weather={weather}
-              envData={envData}
-              coords={coords}
-              lang={lang}
-            />
-          )}
+            {activeTab === "alerts" && (
+              <AlertsTab
+                weather={weather}
+                envData={envData}
+                coords={coords}
+                lang={lang}
+              />
+            )}
 
-          {activeTab === "history" && (
-            <HistoryTab
-              weather={weather}
-              coords={coords}
-              lang={lang}
-            />
-          )}
+            {activeTab === "history" && (
+              <HistoryTab
+                weather={weather}
+                coords={coords}
+                lang={lang}
+              />
+            )}
 
-          {activeTab === "settings" && (
-            <SettingsTab
-              lang={lang}
-              setLang={setLang}
-              weather={weather}
-              coords={coords}
-              bgTheme={bgTheme}
-              setBgTheme={setBgTheme}
-              onLogout={handleLogout}
-            />
-          )}
-        </div>
+            {activeTab === "settings" && (
+              <SettingsTab
+                lang={lang}
+                setLang={setLang}
+                weather={weather}
+                coords={coords}
+                bgTheme={bgTheme}
+                setBgTheme={setBgTheme}
+                onLogout={handleLogout}
+              />
+            )}
+          </div>
+        </TabErrorBoundary>
       </main>
+      
+      {/* Global Application Footer */}
+      <Footer onNavigateTab={setActiveTab} />
     </div>
   );
 }

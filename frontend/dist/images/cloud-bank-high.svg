@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 600" width="2400" height="600" fill="none">
+  <defs>
+    <filter id="blurHigh" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="32" />
+    </filter>
+    <linearGradient id="cloudGradHigh" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18" />
+      <stop offset="40%" stop-color="#bae6fd" stop-opacity="0.14" />
+      <stop offset="80%" stop-color="#38bdf8" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <g filter="url(#blurHigh)">
+    <!-- First half (0 to 1200) -->
+    <ellipse cx="200" cy="180" rx="260" ry="110" fill="url(#cloudGradHigh)" />
+    <ellipse cx="440" cy="140" rx="320" ry="130" fill="url(#cloudGradHigh)" />
+    <ellipse cx="780" cy="200" rx="360" ry="120" fill="url(#cloudGradHigh)" />
+    <ellipse cx="1060" cy="150" rx="280" ry="100" fill="url(#cloudGradHigh)" />
+    <ellipse cx="320" cy="240" rx="420" ry="90" fill="url(#cloudGradHigh)" />
+    <ellipse cx="900" cy="230" rx="400" ry="95" fill="url(#cloudGradHigh)" />
+
+    <!-- Second half identical seamless repeat (1200 to 2400) -->
+    <ellipse cx="1400" cy="180" rx="260" ry="110" fill="url(#cloudGradHigh)" />
+    <ellipse cx="1640" cy="140" rx="320" ry="130" fill="url(#cloudGradHigh)" />
+    <ellipse cx="1980" cy="200" rx="360" ry="120" fill="url(#cloudGradHigh)" />
+    <ellipse cx="2260" cy="150" rx="280" ry="100" fill="url(#cloudGradHigh)" />
+    <ellipse cx="1520" cy="240" rx="420" ry="90" fill="url(#cloudGradHigh)" />
+    <ellipse cx="2100" cy="230" rx="400" ry="95" fill="url(#cloudGradHigh)" />
+  </g>
+</svg>

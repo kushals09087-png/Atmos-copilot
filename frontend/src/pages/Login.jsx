@@ -11,9 +11,23 @@ export default function Login() {
   async function submit(e) {
     e.preventDefault();
     setError("");
+
+    if (!form.email || !form.password) {
+      setError("Email and password are required.");
+      return;
+    }
+
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const r = await authApi.login(form);
+      const r = await authApi.login({
+        email: form.email.trim().toLowerCase(),
+        password: form.password
+      });
       localStorage.setItem("atmos_token", r.token);
       if (r.user) localStorage.setItem("atmos_user", JSON.stringify(r.user));
       window.dispatchEvent(new Event("atmos-auth-change"));
@@ -33,8 +47,9 @@ export default function Login() {
           <input
             type="email"
             required
+            maxLength={100}
             value={form.email}
-            onChange={e => setForm({ ...form, email: e.target.value })}
+            onChange={e => setForm({ ...form, email: e.target.value.trim() })}
             placeholder="user@example.com"
           />
         </label>
@@ -43,6 +58,8 @@ export default function Login() {
           <input
             type="password"
             required
+            minLength={8}
+            maxLength={128}
             value={form.password}
             onChange={e => setForm({ ...form, password: e.target.value })}
             placeholder="••••••••"

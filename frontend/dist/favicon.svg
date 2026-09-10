@@ -1,0 +1,36 @@
+<svg width="64" height="64" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="favJetBg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0b1b33"/>
+      <stop offset="100%" stop-color="#030914"/>
+    </linearGradient>
+    <linearGradient id="favJetWing" x1="8" y1="9" x2="40" y2="35" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="favJetCanopy" x1="24" y1="13" x2="24" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <radialGradient id="favBurner" cx="24" cy="35" r="6" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#favJetBg)" stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.4"/>
+  <circle cx="24" cy="24" r="17" stroke="#38bdf8" stroke-width="1" stroke-dasharray="2 3" stroke-opacity="0.25"/>
+  
+  <!-- Afterburner Glow -->
+  <circle cx="24" cy="35" r="6" fill="url(#favBurner)"/>
+
+  <!-- Jet Delta Chevron -->
+  <path d="M 24 8.5 L 39 33.5 L 30.5 29.5 L 24 34.5 L 17.5 29.5 L 9 33.5 Z" fill="url(#favJetWing)" stroke="#ffffff" stroke-width="0.75" stroke-opacity="0.5"/>
+  <path d="M 24 8.5 L 17.5 29.5 L 9 33.5 Z" fill="#000000" fill-opacity="0.25"/>
+  
+  <!-- Canopy -->
+  <path d="M 24 13.5 L 27.5 24.5 L 24 28 L 20.5 24.5 Z" fill="url(#favJetCanopy)"/>
+  <circle cx="24" cy="9.5" r="1.5" fill="#ffffff"/>
+</svg>

@@ -1,6 +1,8 @@
-import { Settings as SettingsIcon, Globe, User, Radio, LogOut, CheckCircle2, ShieldCheck, Cpu, HardDrive, Clapperboard } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Settings as SettingsIcon, Globe, User, Radio, LogOut, CheckCircle2, ShieldCheck, Cpu, HardDrive, Clapperboard, Volume2, Play, Square } from "lucide-react";
 import { translations, formatDigits } from "../../utils/telemetryData";
 import { BACKGROUND_THEMES } from "../BackgroundVideo";
+import { VOCAL_PROFILES, speakText, stopAllSpeech, setStoredVoiceProfile, getStoredVoiceProfile } from "../../utils/vocalSynth";
 
 export default function SettingsTab({ lang, setLang, weather, coords, bgTheme = "mountains", setBgTheme, onLogout }) {
   const [operator, setOperator] = useState({
@@ -9,6 +11,17 @@ export default function SettingsTab({ lang, setLang, weather, coords, bgTheme = 
     mobile: "+91 98450 12345",
     loginTime: new Date().toLocaleTimeString()
   });
+
+  const [selectedVoice, setSelectedVoice] = useState(() => {
+    return localStorage.getItem("atmos_vocal_voice") || "spandana";
+  });
+  const [playingPreviewId, setPlayingPreviewId] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      stopAllSpeech();
+    };
+  }, []);
 
   useEffect(() => {
     const raw = localStorage.getItem("atmos_user");
@@ -42,6 +55,30 @@ export default function SettingsTab({ lang, setLang, weather, coords, bgTheme = 
     setLang(code);
     localStorage.setItem("atmos_lang", code);
   }
+
+  function handleSelectVoice(profileId) {
+    setSelectedVoice(profileId);
+    setStoredVoiceProfile(profileId);
+  }
+
+  function handleTogglePreview(profile) {
+    if (playingPreviewId === profile.id) {
+      stopAllSpeech();
+      setPlayingPreviewId(null);
+      return;
+    }
+
+    stopAllSpeech();
+    setPlayingPreviewId(profile.id);
+
+    speakText(profile.previewText, profile.id, {
+      onStart: () => setPlayingPreviewId(profile.id),
+      onEnd: () => setPlayingPreviewId(null),
+      onError: () => setPlayingPreviewId(null)
+    });
+  }
+
+  const activeVoiceProfile = VOCAL_PROFILES.find(p => p.id === selectedVoice) || VOCAL_PROFILES[0];
 
   return (
     <div className="tab-pane active fade-in">
@@ -142,6 +179,108 @@ export default function SettingsTab({ lang, setLang, weather, coords, bgTheme = 
           >
             <LogOut size={16} /> {t.logOut}
           </button>
+        </div>
+      </div>
+
+      {/* Sun Copilot Vocal Synthesis & AI Voice Profile */}
+      <div className="glass card" style={{ marginTop: "1.5rem" }}>
+        <div className="card-header-clean">
+          <div>
+            <h3 className="subheading" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Volume2 size={18} className="text-cyan" /> Sun Copilot Vocal Synthesis & AI Voice Profile
+            </h3>
+          </div>
+          <span className="badge-cyan">
+            Active: {activeVoiceProfile.name} ({activeVoiceProfile.genderLabel})
+          </span>
+        </div>
+        <p className="text-secondary text-sm" style={{ marginBottom: "1.25rem" }}>
+          Select the synthetic vocal personality for Sun Copilot spoken meteorological briefings, radar advisories, and weather alerts. Choose between natural girl (female) and boy (male) acoustic signatures.
+        </p>
+
+        <div className="vocal-profiles-grid">
+          {VOCAL_PROFILES.map((profile) => {
+            const isSelected = selectedVoice === profile.id;
+            const isPlaying = playingPreviewId === profile.id;
+
+            return (
+              <div
+                key={profile.id}
+                className={`vocal-profile-card ${isSelected ? "selected" : ""}`}
+                style={{
+                  borderColor: isSelected ? profile.accentColor : undefined
+                }}
+                onClick={() => handleSelectVoice(profile.id)}
+              >
+                <div className="vocal-card-top">
+                  <div className="vocal-avatar-wrap" style={{ borderColor: `${profile.accentColor}60` }}>
+                    <span className="vocal-avatar-emoji">{profile.avatar}</span>
+                  </div>
+                  <div className="vocal-card-badges">
+                    <span className="vocal-gender-tag" style={{ color: profile.accentColor, borderColor: `${profile.accentColor}40` }}>
+                      {profile.genderLabel}
+                    </span>
+                    {isSelected && (
+                      <span className="vocal-active-pill">
+                        <CheckCircle2 size={12} /> Active
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="vocal-card-body">
+                  <div className="vocal-voice-name">
+                    {profile.name} <span className="vocal-voice-gender-sub">({profile.genderLabel})</span>
+                  </div>
+                  <div className="vocal-voice-title">{profile.title}</div>
+                  <p className="vocal-voice-desc">{profile.tagline}</p>
+
+                  <div className="vocal-spec-tags">
+                    <span className="vocal-spec-item">
+                      <strong>Pitch:</strong> {profile.pitch > 1 ? `+${Math.round((profile.pitch - 1) * 100)}% (Natural Treble)` : profile.pitch < 1 ? `-${Math.round((1 - profile.pitch) * 100)}% (Deep Bass)` : "1.0x (Balanced)"}
+                    </span>
+                    <span className="vocal-spec-item">
+                      <strong>Cadence:</strong> {profile.rate}x
+                    </span>
+                  </div>
+                </div>
+
+                <div className="vocal-card-actions" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className={`vocal-preview-btn ${isPlaying ? "playing" : ""}`}
+                    onClick={() => handleTogglePreview(profile)}
+                    title={isPlaying ? "Stop voice sample" : "Listen to voice sample"}
+                  >
+                    {isPlaying ? (
+                      <>
+                        <Square size={13} fill="currentColor" />
+                        <span>Stop Sample</span>
+                        <span className="vocal-wave-bars">
+                          <span className="vwave-bar"></span>
+                          <span className="vwave-bar"></span>
+                          <span className="vwave-bar"></span>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Play size={13} fill="currentColor" />
+                        <span>Preview Voice</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`vocal-select-btn ${isSelected ? "selected" : ""}`}
+                    onClick={() => handleSelectVoice(profile.id)}
+                  >
+                    {isSelected ? "Selected" : "Set Active"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

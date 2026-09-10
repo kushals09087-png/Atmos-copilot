@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 700" width="2400" height="700" fill="none">
+  <defs>
+    <filter id="blurMid" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="24" />
+    </filter>
+    <linearGradient id="cloudGradMid" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.26" />
+      <stop offset="45%" stop-color="#e0f2fe" stop-opacity="0.18" />
+      <stop offset="85%" stop-color="#0284c7" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#0b1b33" stop-opacity="0" />
+    </linearGradient>
+    <linearGradient id="cloudHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f0f9ff" stop-opacity="0.32" />
+      <stop offset="100%" stop-color="#bae6fd" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <g filter="url(#blurMid)">
+    <!-- First half (0 to 1200) -->
+    <circle cx="160" cy="360" r="140" fill="url(#cloudGradMid)" />
+    <circle cx="280" cy="300" r="180" fill="url(#cloudHighlight)" />
+    <circle cx="440" cy="260" r="210" fill="url(#cloudGradMid)" />
+    <circle cx="620" cy="320" r="170" fill="url(#cloudGradMid)" />
+    <circle cx="760" cy="270" r="190" fill="url(#cloudHighlight)" />
+    <circle cx="940" cy="310" r="160" fill="url(#cloudGradMid)" />
+    <circle cx="1100" cy="350" r="150" fill="url(#cloudGradMid)" />
+    <ellipse cx="550" cy="420" rx="550" ry="120" fill="url(#cloudGradMid)" />
+
+    <!-- Second half seamless repeat (1200 to 2400) -->
+    <circle cx="1360" cy="360" r="140" fill="url(#cloudGradMid)" />
+    <circle cx="1480" cy="300" r="180" fill="url(#cloudHighlight)" />
+    <circle cx="1640" cy="260" r="210" fill="url(#cloudGradMid)" />
+    <circle cx="1820" cy="320" r="170" fill="url(#cloudGradMid)" />
+    <circle cx="1960" cy="270" r="190" fill="url(#cloudHighlight)" />
+    <circle cx="2140" cy="310" r="160" fill="url(#cloudGradMid)" />
+    <circle cx="2300" cy="350" r="150" fill="url(#cloudGradMid)" />
+    <ellipse cx="1750" cy="420" rx="550" ry="120" fill="url(#cloudGradMid)" />
+  </g>
+</svg>

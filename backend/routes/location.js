@@ -11,11 +11,64 @@ router.get("/reverse", async (req, res, next) => {
     if (!r.ok) throw new Error("Reverse geocoding failed");
     const d = await r.json();
     const a = d.address || {};
+
+    const zoning =
+      a.industrial ||
+      a.commercial ||
+      a.retail ||
+      a.business ||
+      a.office ||
+      a.amenity ||
+      a.quarter ||
+      a.suburb ||
+      a.neighbourhood ||
+      a.residential ||
+      a.village ||
+      a.hamlet ||
+      a.town ||
+      a.road ||
+      "";
+
+    const admin =
+      a.city ||
+      a.county ||
+      a.state_district ||
+      a.city_district ||
+      a.municipality ||
+      "";
+
+    const state = a.state || "";
+    const country = a.country || "";
+
+    const district = a.state_district || a.district || "";
+    const taluk = a.county || "";
+    const city = a.city || a.town || a.municipality || "";
+
+    const parts = [];
+    if (zoning) parts.push(zoning);
+    if (city && (!zoning || !zoning.toLowerCase().includes(city.toLowerCase()))) {
+      parts.push(city);
+    } else if (district && (!zoning || !zoning.toLowerCase().includes(district.toLowerCase()))) {
+      parts.push(district);
+    } else if (taluk && (!zoning || !zoning.toLowerCase().includes(taluk.toLowerCase()))) {
+      parts.push(taluk);
+    }
+    if (state && (!parts.some(p => p.toLowerCase().includes(state.toLowerCase())))) {
+      parts.push(state);
+    }
+
+    const formatted = parts.length > 0 ? parts.join(", ") : (city || district || "Detected Station");
+
     res.json({
-      name: a.city || a.town || a.village || a.municipality || a.county || "Current location",
-      area: a.suburb || a.neighbourhood || a.quarter || a.city_district || a.city || "Current area",
-      state: a.state || "",
-      country: a.country || "",
+      name: zoning || city || district || "Current location",
+      area: district || taluk || city || "Current area",
+      zoning,
+      city: city || district || taluk || "Current Area",
+      district,
+      taluk,
+      formatted,
+      state,
+      country,
       lat, lon
     });
   } catch(e) { next(e); }

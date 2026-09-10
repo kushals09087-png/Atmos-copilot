@@ -1,8 +1,9 @@
-export function weatherLabel(code) {
+export function weatherLabel(code, isDay = true) {
+  const isNight = isDay === false || isDay === 0;
   const map = {
-    0: ["Clear sky", "☀️"],
-    1: ["Mainly clear", "🌤️"],
-    2: ["Partly cloudy", "⛅"],
+    0: [isNight ? "Clear night" : "Clear sky", isNight ? "🌙" : "☀️"],
+    1: [isNight ? "Mainly clear" : "Mainly clear", isNight ? "🌙" : "🌤️"],
+    2: ["Partly cloudy", isNight ? "☁️" : "⛅"],
     3: ["Overcast", "☁️"],
     45: ["Fog", "🌫️"],
     48: ["Rime fog", "🌫️"],
@@ -29,7 +30,7 @@ export function weatherLabel(code) {
     96: ["Thunderstorm + hail", "⛈️"],
     99: ["Severe thunderstorm", "⛈️"]
   };
-  return map[code] || ["Unknown", "🌤️"];
+  return map[code] || ["Unknown", isNight ? "🌙" : "🌤️"];
 }
 
 export function backgroundClass(code, isDay = true) {

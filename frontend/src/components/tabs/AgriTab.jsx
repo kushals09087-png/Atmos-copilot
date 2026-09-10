@@ -62,7 +62,7 @@ export default function AgriTab({ coords, weather }) {
               <Search size={14} className="search-icon" />
               <input
                 type="text"
-                placeholder="Search area (e.g. Hassan, Kodagu)..."
+                placeholder="Search area (e.g. Hassan, Davanagere)..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />

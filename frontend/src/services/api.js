@@ -29,6 +29,7 @@ export const weatherApi = {
 
 export const authApi = {
   signup: (payload) => request("/auth/signup", { method: "POST", body: JSON.stringify(payload) }),
+  register: (payload) => request("/auth/signup", { method: "POST", body: JSON.stringify(payload) }),
   login: (payload) => request("/auth/login", { method: "POST", body: JSON.stringify(payload) })
 };
 

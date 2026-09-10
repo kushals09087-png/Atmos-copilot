@@ -13,6 +13,11 @@ const DEFAULT_PORT = Number(process.env.PORT) || 5001;
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 
+app.use((req, res, next) => {
+  console.log(`[REQ] ${req.method} ${req.url}`);
+  next();
+});
+
 app.get("/api/health", (_, res) => res.json({
   ok: true,
   service: "Atmos Copilot API",
