@@ -123,7 +123,7 @@ export default function Navbar({
           <ThemeToggle />
 
           {user && (
-            <div className="operator-pill">
+            <div className="operator-pill nav-operator-desktop">
               <span className="operator-icon-badge">
                 <User size={13} />
               </span>
@@ -158,10 +158,20 @@ export default function Navbar({
       {mobileMenuOpen && (
         <div className="mobile-nav-drawer glass fade-in">
           <div className="mobile-drawer-header">
-            <div className="locality-pill mobile-locality">
+            <button
+              type="button"
+              className="locality-pill mobile-locality mobile-drawer-locality-btn"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenLocationModal();
+              }}
+              title="Click to search city or change GPS location"
+            >
               <span className="live-dot pulse"></span>
-              <span>{localityText}</span>
-            </div>
+              <MapPin size={13} className="text-cyan flex-shrink-0" />
+              <span className="mobile-locality-text">{localityText}</span>
+              <span className="change-hint-mini">CHANGE</span>
+            </button>
             <button
               type="button"
               className="close-drawer-btn"

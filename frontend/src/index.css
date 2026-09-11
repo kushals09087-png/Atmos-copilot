@@ -7649,6 +7649,66 @@ nav {
   }
 }
 
+/* ==========================================================================
+   RESPONSIVE ADAPTATIONS: MOBILE PHONES (360px - 640px) & TABLETS (768px - 1024px)
+   ========================================================================== */
+
+/* Universal container boundary enforcement */
+.main-content-layout,
+.tab-viewport-container,
+.tab-container,
+.tab-pane,
+.observatory-hero-grid,
+.metric-tiles-grid,
+.environmental-trio-grid,
+.telemetry-grid,
+.synoptic-cards-grid {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Base interactive touch target styling */
+button,
+input,
+select,
+textarea,
+.btn,
+.tab-nav-btn,
+.popular-tile-btn,
+.recent-pill-btn {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ==========================================================================
+   1. LAPTOPS & LARGE TABLETS (<= 1200px)
+   ========================================================================== */
+@media (max-width: 1200px) {
+  .observatory-hero-grid {
+    grid-template-columns: 1.15fr 1fr;
+    gap: 12px;
+  }
+  .hero-weather-surface {
+    padding: 22px 24px;
+  }
+  .temp-num {
+    font-size: 56px;
+  }
+  .metric-tile {
+    padding: 14px;
+  }
+  .four-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .locality-pill {
+    max-width: 300px;
+  }
+}
+
+/* ==========================================================================
+   2. MID TABLETS & IPADS (<= 992px)
+   ========================================================================== */
 @media (max-width: 992px) {
   .desktop-tab-nav {
     display: none !important;
@@ -7658,11 +7718,21 @@ nav {
     align-items: center;
     justify-content: center;
   }
-  .operator-pill {
-    padding: 3px 6px;
+  .observatory-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
-  .operator-name-truncate {
-    max-width: 80px;
+  .four-col,
+  .environmental-trio-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .observatory-telemetry-dual-grid {
+    grid-template-columns: 1fr;
+  }
+  .agri-layout-grid,
+  .route-inputs-grid,
+  .station-cards-grid {
+    grid-template-columns: 1fr;
   }
   .header-actions-cluster {
     width: 100%;
@@ -7671,46 +7741,59 @@ nav {
   .observatory-unit-switcher {
     flex-wrap: wrap;
   }
-}
-
-@media (max-width: 860px) {
-  .quick-search-text {
-    display: none;
+  .operator-pill {
+    padding: 3px 6px;
   }
-  .locality-pill {
-    max-width: 240px;
-  }
-  .locality-name {
-    max-width: 150px;
+  .operator-name-truncate {
+    max-width: 80px;
   }
 }
 
-@media (max-width: 800px) {
-  .observatory-hero-grid,
-  .disaster-hero-card,
+/* ==========================================================================
+   3. TABLETS & LARGE PHONES (<= 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Prevent iOS Safari 16px auto-zoom on form inputs */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Unstick headers on tablet/mobile so they don't consume ~50% vertical viewport */
+  .telemetry-section-header {
+    position: relative !important;
+    top: auto !important;
+    margin-bottom: 14px !important;
+    padding: 10px 14px !important;
+    border-radius: 14px !important;
+  }
+  .section-title {
+    font-size: clamp(18px, 4.5vw, 22px) !important;
+  }
+  .section-subtitle {
+    font-size: 12.5px !important;
+  }
+
+  /* Main content padding adjusted for mobile header height */
+  .main-content-layout {
+    padding: 74px clamp(12px, 3vw, 20px) 32px !important;
+  }
+
   .two-col-grid,
   .dual-station-grid,
-  .lang-radio-grid {
-    grid-template-columns: 1fr;
+  .lang-radio-grid,
+  .sensor-lock-banner,
+  .three-col {
+    grid-template-columns: 1fr !important;
   }
-  .four-col, .environmental-trio-grid {
-    grid-template-columns: 1fr;
-  }
-  .sensor-lock-banner, .three-col {
-    grid-template-columns: 1fr;
-  }
-  .satellite-viewer-wrap {
-    height: 400px;
-  }
-}
 
-@media (max-width: 768px) {
   .persona-pills-row {
     display: flex !important;
     overflow-x: auto !important;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
+    padding-bottom: 6px;
     gap: 8px;
   }
   .persona-pills-row::-webkit-scrollbar {
@@ -7719,55 +7802,260 @@ nav {
   .persona-pill-btn {
     flex-shrink: 0;
   }
+
   .corridor-summary-banner {
     grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 14px;
   }
   .corridor-summary-banner .note-col {
     grid-column: 1 / -1;
   }
+
+  .map-view-viewport {
+    height: 400px;
+  }
+  .satellite-viewer-wrap {
+    height: 380px !important;
+  }
+
+  .popular-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
 }
 
+/* ==========================================================================
+   4. SMARTPHONES & COMPACT VIEWPORTS (<= 640px)
+   ========================================================================== */
 @media (max-width: 640px) {
-  .coords-text {
-    display: none;
+  /* Top Navbar on Phone */
+  .atmos-main-navbar.single-row-header {
+    height: 60px !important;
+    padding: 0 10px !important;
+    gap: 8px !important;
   }
-  .operator-name-truncate {
-    display: none;
+
+  /* Hide operator pill in single-row header (available inside drawer footer) */
+  .operator-pill.nav-operator-desktop {
+    display: none !important;
   }
-  .brand-title-text {
-    font-size: 13px;
+
+  .nav-brand-locality-cluster {
+    gap: 8px;
+    max-width: calc(100vw - 110px);
   }
+
+  .brand-title {
+    font-size: 13px !important;
+  }
+
   .nav-sub-city-name {
-    max-width: 110px;
+    max-width: clamp(80px, 28vw, 130px) !important;
+    font-size: 11px !important;
   }
+
+  .mobile-hamburger-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+  }
+
+  /* Mobile Navigation Drawer */
+  .mobile-nav-drawer {
+    top: 60px;
+    padding: 14px 12px 28px !important;
+  }
+  .mobile-drawer-header {
+    margin-bottom: 12px;
+  }
+  .mobile-locality-btn,
+  .mobile-drawer-locality-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--pill-bg);
+    border: 1px solid var(--line);
+    padding: 6px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-heading);
+    max-width: calc(100vw - 80px);
+  }
+  .mobile-locality-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+  }
+  .mobile-tabs-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .mobile-tab-btn {
+    padding: 12px 10px !important;
+    font-size: 12px !important;
+    min-height: 44px;
+  }
+
+  /* Welcome & Landing Showcase Page */
   .welcome-top-bar {
-    padding: 12px 16px;
+    padding: 10px 12px !important;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
+  }
+  .welcome-station-status {
+    font-size: 10.5px !important;
+  }
+  .station-status-text {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .welcome-hero-card {
-    padding: 16px 14px 40px;
+    padding: 14px 10px 32px !important;
+    border-radius: 20px !important;
   }
   .intro-logo-glow-shell {
-    width: 104px;
-    height: 104px;
-    margin-bottom: 16px;
+    width: 84px !important;
+    height: 84px !important;
+    margin-bottom: 12px !important;
   }
   .intro-brand-heading {
-    font-size: clamp(28px, 8vw, 44px);
+    font-size: clamp(26px, 7.8vw, 38px) !important;
+    margin-bottom: 8px !important;
+  }
+  .intro-tagline-text {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+    padding: 0 4px;
+  }
+  .welcome-capabilities-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    margin: 16px 0 20px !important;
+  }
+  .welcome-cap-card {
+    padding: 10px 12px !important;
+  }
+  .welcome-primary-btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 14px !important;
+    justify-content: center !important;
   }
   .welcome-secondary-row {
     flex-direction: column !important;
     width: 100% !important;
+    gap: 8px !important;
   }
   .welcome-secondary-btn,
   .welcome-demo-pill {
     width: 100% !important;
+    min-height: 46px !important;
+    justify-content: center !important;
   }
-  .popular-grid {
+  .welcome-live-ticker-bar {
+    padding: 8px 10px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Auth / Login Form on Mobile */
+  .login-top-bar {
+    padding: 12px 14px !important;
+  }
+  .login-container {
+    padding: 8px !important;
+    width: 100% !important;
+  }
+  .login-card {
+    padding: 20px 14px !important;
+    border-radius: 20px !important;
+    width: 100% !important;
+    max-width: 440px !important;
+  }
+  .login-title {
+    font-size: 19px !important;
+  }
+  .login-subtitle {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+  .login-mode-toggle {
+    width: 100% !important;
+  }
+  .demo-credentials-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+  .demo-actions-row {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .btn-demo-direct,
+  .demo-fill-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  /* Observatory Tab Weather Surface */
+  .hero-weather-surface {
+    padding: 18px 16px !important;
+    border-radius: 20px !important;
+    min-height: auto !important;
+    gap: 16px;
+  }
+  .hero-location-name {
+    font-size: clamp(17px, 5vw, 22px) !important;
+  }
+  .temp-num {
+    font-size: clamp(40px, 12vw, 54px) !important;
+  }
+  .hero-atmospheric-strip {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+  .metric-tiles-grid {
     grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
   }
-  /* 7-Day forecast becomes sleek swipeable track on mobile */
+  .metric-tile {
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+  }
+  .metric-tile .metric-val {
+    font-size: 17px !important;
+  }
+  .environmental-trio-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .radar-sounding-card,
+  .solar-celestial-card {
+    padding: 14px !important;
+  }
+  .radar-sweep-container {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  .radar-scope-circle {
+    width: 150px !important;
+    height: 150px !important;
+  }
+
+  /* 7-Day Forecast Smooth Swipeable Strip on Mobile */
   .synoptic-cards-grid {
     display: flex !important;
     overflow-x: auto !important;
@@ -7781,65 +8069,100 @@ nav {
     display: none;
   }
   .synoptic-card {
-    min-width: 88px !important;
+    min-width: 86px !important;
     flex-shrink: 0 !important;
     scroll-snap-align: start;
+    padding: 10px 8px !important;
+  }
+
+  /* Satellite & Doppler Radar on Mobile */
+  .satellite-viewer-wrap {
+    height: 350px !important;
+    border-radius: 16px !important;
+  }
+  .satellite-controls-bar,
+  .radar-layer-toggles {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .layer-toggle-btn {
+    min-height: 38px;
+    padding: 6px 10px !important;
+    font-size: 11.5px !important;
+  }
+
+  /* Location Modal Dialog on Mobile */
+  .location-modal-card {
+    padding: 16px 12px !important;
+    width: min(560px, 94vw) !important;
+    max-height: 88vh !important;
+    border-radius: 18px !important;
+  }
+  .modal-search-bar {
+    padding: 8px 12px !important;
+  }
+  .gps-locate-btn {
+    min-height: 48px !important;
+  }
+  .popular-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .popular-tile-btn {
+    padding: 8px 10px !important;
+    min-height: 44px !important;
   }
 }
 
+/* ==========================================================================
+   5. ULTRA-COMPACT SMARTPHONES (<= 480px)
+   ========================================================================== */
 @media (max-width: 480px) {
+  .main-content-layout {
+    padding: 68px 8px 24px !important;
+  }
+
   .brand-title span {
-    font-size: 12px;
+    font-size: 12px !important;
   }
+
   .login-card {
-    padding: 24px 16px !important;
-    border-radius: 20px !important;
+    padding: 18px 12px !important;
   }
-  .location-modal-card {
-    padding: 18px 14px !important;
-    width: min(560px, 94vw) !important;
-  }
-  .popular-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .metric-tiles-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .metric-tile {
-    padding: 14px;
-  }
+
   .corridor-summary-banner {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
   }
-  .hero-atmospheric-strip {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
+
   .disaster-hero-card {
-    padding: 18px 14px !important;
+    padding: 16px 12px !important;
   }
   .disaster-hero-left {
     flex-direction: column !important;
     align-items: flex-start !important;
   }
-  .disaster-metrics-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .protocol-detail-grid {
-    grid-template-columns: 1fr !important;
-  }
+  .disaster-metrics-grid,
+  .protocol-detail-grid,
   .dos-donts-grid {
     grid-template-columns: 1fr !important;
+    gap: 8px !important;
   }
   .shelter-transit-row {
     flex-direction: column !important;
-    align-items: flex-start !important;
+    align-items: stretch !important;
     gap: 10px !important;
   }
   .gps-nav-btn {
     width: 100% !important;
     justify-content: center !important;
+    min-height: 44px !important;
+  }
+
+  .footer-content-container {
+    padding: 24px 14px 20px !important;
+    gap: 24px !important;
   }
 }
 
@@ -12570,6 +12893,448 @@ nav {
   border-color: #38bdf8;
   color: #ffffff;
   box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+}
+
+/* ==========================================================================
+   MASTER RESPONSIVE SYSTEM: SMARTPHONES (360px - 640px) & TABLETS (768px - 1024px)
+   Final cascade priority layer: guarantees perfect sizing, touch targets, and layout flow
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  /* Tablet layout optimizations */
+  .observatory-hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .four-col,
+  .environmental-trio-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .observatory-telemetry-dual-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .agri-layout-grid,
+  .route-inputs-grid,
+  .station-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Prevent iOS Safari 16px auto-zoom on form inputs */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Unstick headers on tablet/mobile so they don't consume ~50% vertical viewport */
+  .telemetry-section-header {
+    position: relative !important;
+    top: auto !important;
+    margin-bottom: 14px !important;
+    padding: 10px 14px !important;
+    border-radius: 14px !important;
+  }
+  .section-title {
+    font-size: clamp(18px, 4.5vw, 22px) !important;
+  }
+  .section-subtitle {
+    font-size: 12.5px !important;
+  }
+
+  /* Main content padding adjusted for mobile header height */
+  .main-content-layout {
+    padding: 74px clamp(12px, 3vw, 20px) 32px !important;
+  }
+
+  .two-col-grid,
+  .dual-station-grid,
+  .lang-radio-grid,
+  .sensor-lock-banner,
+  .three-col {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .persona-pills-row {
+    display: flex !important;
+    overflow-x: auto !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    gap: 8px;
+  }
+  .persona-pills-row::-webkit-scrollbar {
+    display: none;
+  }
+  .persona-pill-btn {
+    flex-shrink: 0;
+  }
+
+  .corridor-summary-banner {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+  .corridor-summary-banner .note-col {
+    grid-column: 1 / -1 !important;
+  }
+
+  .map-view-viewport {
+    height: 400px !important;
+  }
+  .satellite-viewer-wrap {
+    height: 380px !important;
+  }
+
+  .popular-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Top Navbar on Phone */
+  .atmos-main-navbar.single-row-header {
+    height: 60px !important;
+    padding: 0 10px !important;
+    gap: 8px !important;
+  }
+
+  /* Hide operator pill in single-row header (available inside drawer footer) */
+  .operator-pill.nav-operator-desktop {
+    display: none !important;
+  }
+
+  .nav-brand-locality-cluster {
+    gap: 8px !important;
+    max-width: calc(100vw - 110px) !important;
+  }
+
+  .brand-title {
+    font-size: 13px !important;
+  }
+
+  .nav-sub-city-name {
+    max-width: clamp(80px, 28vw, 130px) !important;
+    font-size: 11px !important;
+  }
+
+  .mobile-hamburger-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px !important;
+  }
+
+  /* Mobile Navigation Drawer */
+  .mobile-nav-drawer {
+    top: 60px !important;
+    padding: 14px 12px 28px !important;
+  }
+  .mobile-drawer-header {
+    margin-bottom: 12px !important;
+  }
+  .mobile-locality-btn,
+  .mobile-drawer-locality-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    background: var(--pill-bg) !important;
+    border: 1px solid var(--line) !important;
+    padding: 6px 10px !important;
+    border-radius: 999px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    color: var(--text-heading) !important;
+    max-width: calc(100vw - 80px) !important;
+  }
+  .mobile-locality-text {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 140px !important;
+  }
+  .mobile-tabs-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .mobile-tab-btn {
+    padding: 12px 10px !important;
+    font-size: 12px !important;
+    min-height: 44px !important;
+  }
+
+  /* Welcome & Landing Showcase Page */
+  .welcome-top-bar {
+    padding: 10px 12px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .welcome-station-status {
+    font-size: 10.5px !important;
+  }
+  .station-status-text {
+    max-width: 180px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .welcome-hero-card {
+    padding: 14px 10px 32px !important;
+    border-radius: 20px !important;
+  }
+  .intro-logo-glow-shell {
+    width: 84px !important;
+    height: 84px !important;
+    margin-bottom: 12px !important;
+  }
+  .intro-brand-heading {
+    font-size: clamp(26px, 7.8vw, 38px) !important;
+    margin-bottom: 8px !important;
+  }
+  .intro-tagline-text {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+    padding: 0 4px !important;
+  }
+  .welcome-capabilities-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    margin: 16px 0 20px !important;
+  }
+  .welcome-cap-card {
+    padding: 10px 12px !important;
+  }
+  .welcome-primary-btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 14px !important;
+    justify-content: center !important;
+  }
+  .welcome-secondary-row {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .welcome-secondary-btn,
+  .welcome-demo-pill {
+    width: 100% !important;
+    min-height: 46px !important;
+    justify-content: center !important;
+  }
+  .welcome-live-ticker-bar {
+    padding: 8px 10px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Auth / Login Form on Mobile */
+  .login-top-bar {
+    padding: 12px 14px !important;
+  }
+  .login-container {
+    padding: 8px !important;
+    width: 100% !important;
+  }
+  .login-card {
+    padding: 20px 14px !important;
+    border-radius: 20px !important;
+    width: 100% !important;
+    max-width: 440px !important;
+  }
+  .login-title {
+    font-size: 19px !important;
+  }
+  .login-subtitle {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+  .login-mode-toggle {
+    width: 100% !important;
+  }
+  .demo-credentials-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+  .demo-actions-row {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .btn-demo-direct,
+  .demo-fill-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  /* Observatory Tab Weather Surface */
+  .hero-weather-surface {
+    padding: 18px 16px !important;
+    border-radius: 20px !important;
+    min-height: auto !important;
+    gap: 16px !important;
+  }
+  .hero-location-name {
+    font-size: clamp(17px, 5vw, 22px) !important;
+  }
+  .temp-num {
+    font-size: clamp(40px, 12vw, 54px) !important;
+  }
+  .hero-atmospheric-strip {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+  .metric-tiles-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  .metric-tile {
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+  }
+  .metric-tile .metric-val {
+    font-size: 17px !important;
+  }
+  .environmental-trio-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .radar-sounding-card,
+  .solar-celestial-card {
+    padding: 14px !important;
+  }
+  .radar-sweep-container {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  .radar-scope-circle {
+    width: 150px !important;
+    height: 150px !important;
+  }
+
+  /* 7-Day Forecast Smooth Swipeable Strip on Mobile */
+  .synoptic-cards-grid {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    gap: 8px !important;
+    padding-bottom: 8px !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .synoptic-cards-grid::-webkit-scrollbar {
+    display: none !important;
+  }
+  .synoptic-card {
+    min-width: 86px !important;
+    flex-shrink: 0 !important;
+    scroll-snap-align: start !important;
+    padding: 10px 8px !important;
+  }
+
+  /* Satellite & Doppler Radar on Mobile */
+  .satellite-viewer-wrap {
+    height: 350px !important;
+    border-radius: 16px !important;
+  }
+  .satellite-controls-bar,
+  .radar-layer-toggles {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .layer-toggle-btn {
+    min-height: 38px !important;
+    padding: 6px 10px !important;
+    font-size: 11.5px !important;
+  }
+
+  /* Location Modal Dialog on Mobile */
+  .location-modal-card {
+    padding: 16px 12px !important;
+    width: min(560px, 94vw) !important;
+    max-height: 88vh !important;
+    border-radius: 18px !important;
+  }
+  .modal-search-bar {
+    padding: 8px 12px !important;
+  }
+  .gps-locate-btn {
+    min-height: 48px !important;
+  }
+  .popular-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .popular-tile-btn {
+    padding: 8px 10px !important;
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content-layout {
+    padding: 68px 8px 24px !important;
+  }
+
+  .brand-title span {
+    font-size: 12px !important;
+  }
+
+  .login-card {
+    padding: 18px 12px !important;
+  }
+
+  .corridor-summary-banner {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .disaster-hero-card {
+    padding: 16px 12px !important;
+  }
+  .disaster-hero-left {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .disaster-metrics-grid,
+  .protocol-detail-grid,
+  .dos-donts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .shelter-transit-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .gps-nav-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 44px !important;
+  }
+
+  .footer-content-container {
+    padding: 24px 14px 20px !important;
+    gap: 24px !important;
+  }
+  .footer-nav-columns {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 16px !important;
+  }
 }
 
 

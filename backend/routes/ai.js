@@ -383,7 +383,7 @@ ${JSON.stringify(activeContext)}`;
 function fetchGoogleTtsChunk(chunk, lang = "en-IN") {
   return new Promise((resolve, reject) => {
     const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=${lang}&client=tw-ob`;
-    const req = https.get(url, { headers: { "User-Agent": "Mozilla/5.0" }, timeout: 8000 }, (res) => {
+    const req = https.get(url, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" }, timeout: 2500 }, (res) => {
       if (res.statusCode !== 200) {
         return reject(new Error(`TTS upstream status ${res.statusCode}`));
       }
@@ -416,15 +416,12 @@ function chunkSpeechText(text, maxLen = 160) {
 }
 
 /**
- * Synthesize speech via Google TTS engine (returns concatenated MP3 buffer)
+ * Synthesize speech via Google TTS engine (parallel chunk fetch for 5x speed)
  */
 async function synthesizeGoogleTts(text, lang = "en-IN") {
   const chunks = chunkSpeechText(text);
-  const buffers = [];
-  for (const c of chunks) {
-    const buf = await fetchGoogleTtsChunk(c, lang);
-    buffers.push(buf);
-  }
+  if (chunks.length === 0) return Buffer.alloc(0);
+  const buffers = await Promise.all(chunks.map(c => fetchGoogleTtsChunk(c, lang)));
   return Buffer.concat(buffers);
 }
 

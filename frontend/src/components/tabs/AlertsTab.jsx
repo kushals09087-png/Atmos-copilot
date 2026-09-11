@@ -602,7 +602,8 @@ export default function AlertsTab({ weather, envData, coords, lang = "en" }) {
     const activeVoice = getStoredVoiceProfile();
     setIsSpeaking(true);
 
-    speakText(script, activeVoice, {
+    speakText(script, activeVoice.id || "spandana", {
+      onStart: () => setIsSpeaking(true),
       onEnd: () => setIsSpeaking(false),
       onError: () => setIsSpeaking(false)
     });

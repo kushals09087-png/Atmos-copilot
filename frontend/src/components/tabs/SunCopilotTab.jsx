@@ -146,6 +146,7 @@ export default function SunCopilotTab({ coords, weather, onQueryLogged, onNaviga
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   // Save chat to localStorage on change
   useEffect(() => {
@@ -160,10 +161,13 @@ export default function SunCopilotTab({ coords, weather, onQueryLogged, onNaviga
     } catch {}
   }, [autoVocalize]);
 
-  // Cancel speech on unmount
+  // Cancel speech and abort mic on unmount
   useEffect(() => {
     return () => {
       stopAllSpeech();
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch (_) {}
+      }
     };
   }, []);
 
@@ -173,11 +177,6 @@ export default function SunCopilotTab({ coords, weather, onQueryLogged, onNaviga
 
   // Speech Synthesis with Selected Voice Profile (Girl / Boy)
   const speakMessage = useCallback((text, id) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      alert("Text-to-speech is not supported in this browser.");
-      return;
-    }
-
     if (speakingId === id) {
       stopAllSpeech();
       setSpeakingId(null);
@@ -188,6 +187,7 @@ export default function SunCopilotTab({ coords, weather, onQueryLogged, onNaviga
     setSpeakingId(id);
 
     speakText(text, currentVoiceId, {
+      onStart: () => setSpeakingId(id),
       onEnd: () => setSpeakingId(null),
       onError: () => setSpeakingId(null)
     });
@@ -291,33 +291,61 @@ export default function SunCopilotTab({ coords, weather, onQueryLogged, onNaviga
   const toggleSpeechRecognition = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Voice speech recognition is supported in Google Chrome, Edge, and modern webkit browsers.");
+      alert("Voice speech recognition is supported in Google Chrome, Edge, and modern WebKit browsers.");
       return;
     }
 
     if (isListening) {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (_) {}
+      }
       setIsListening(false);
       return;
     }
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = "en-US";
+      recognitionRef.current = recognition;
+
+      const currentLang = localStorage.getItem("atmos_lang") || "en";
+      const langMap = {
+        en: "en-IN",
+        kn: "kn-IN",
+        hi: "hi-IN",
+        ta: "ta-IN",
+        te: "te-IN",
+        es: "es-ES"
+      };
+      recognition.lang = langMap[currentLang] || "en-IN";
       recognition.interimResults = false;
+      recognition.continuous = false;
 
       recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => {
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+      recognition.onerror = (e) => {
+        setIsListening(false);
+        recognitionRef.current = null;
+        if (e.error === "not-allowed") {
+          alert("Microphone permission was denied. Please allow microphone access in your browser address bar.");
+        }
+      };
 
-      recognition.onresult = event => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
-        handleSend(transcript);
+      recognition.onresult = (event) => {
+        const transcript = event.results[0]?.[0]?.transcript;
+        if (transcript && transcript.trim()) {
+          setInput(transcript);
+          handleSend(transcript);
+        }
       };
 
       recognition.start();
-    } catch {
+    } catch (err) {
+      console.warn("SpeechRecognition start error:", err);
       setIsListening(false);
+      recognitionRef.current = null;
     }
   };
 

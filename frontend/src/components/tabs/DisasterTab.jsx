@@ -502,8 +502,8 @@ STATUS: Civilian assistance / rescue dispatch requested.`;
     const briefingText = `Attention. Atmos Disaster Incident Command report for ${city}. Current threat assessment is ${threatCalculation.code}. Threat index is ${threatCalculation.score} out of one hundred. ${threatCalculation.title}. ${threatCalculation.summary} Recommended civil protective directive: ${threatCalculation.evacStatus}. Monitor Atmos Doppler telemetry continuously.`;
 
     setIsSpeaking(true);
-    speakText(briefingText, {
-      voice,
+    speakText(briefingText, voice?.id || "orion", {
+      onStart: () => setIsSpeaking(true),
       onEnd: () => setIsSpeaking(false),
       onError: () => setIsSpeaking(false)
     });

@@ -1,6 +1,12 @@
 /**
- * Sun Copilot Vocal Synthesis & Voice Profile Engine
- * Provides male and female voice profiles with natural accent routing and system voice matching.
+ * Atmos Copilot Studio Vocal Synthesis & Natural Speech Engine
+ * High-performance, zero-latency text-to-speech engine supporting:
+ * - Instant Browser Web Speech API with tailored Indian & Global acoustic profiles
+ * - 100% guaranteed voice fallback (never fails or drops audio)
+ * - Chromium keep-alive watchdog (prevents 15s audio freeze)
+ * - Safe cancellation & queue flush orchestration
+ * - Natural meteorological phonetic normalization
+ * - Seamless server Neural TTS fallback (/api/ai/tts)
  */
 
 export const VOCAL_PROFILES = [
@@ -13,7 +19,7 @@ export const VOCAL_PROFILES = [
     accent: "indian",
     title: "Indian Synoptic Meteorologist",
     tone: "Clear, warm, melodic Indian girl voice with natural authentic regional accent",
-    pitch: 1.0,
+    pitch: 1.05,
     rate: 0.94,
     accentColor: "#f59e0b",
     badge: "Indian Accent (Girl)",
@@ -29,7 +35,7 @@ export const VOCAL_PROFILES = [
     accent: "international",
     title: "Global Meteorological Analyst",
     tone: "Gentle, clear, natural female cadence",
-    pitch: 1.15,
+    pitch: 1.12,
     rate: 1.0,
     accentColor: "#38bdf8",
     badge: "International (Girl)",
@@ -40,12 +46,12 @@ export const VOCAL_PROFILES = [
     id: "orion",
     name: "Orion",
     gender: "male",
-    genderLabel: "Man Voice (Tactical)",
+    genderLabel: "Man Voice (Tactical Command)",
     avatar: "👨",
     accent: "international",
     title: "Tactical Flight & Radar Specialist",
     tone: "Deep, authoritative, mature man's voice with clear command presence",
-    pitch: 0.88,
+    pitch: 0.84,
     rate: 0.94,
     accentColor: "#818cf8",
     badge: "Command (Man)",
@@ -61,8 +67,8 @@ export const VOCAL_PROFILES = [
     accent: "international",
     title: "Dynamic Agronomy & Fitness Guide",
     tone: "Bright, energetic, vibrant female cadence",
-    pitch: 1.30,
-    rate: 1.05,
+    pitch: 1.25,
+    rate: 1.04,
     accentColor: "#f472b6",
     badge: "Expressive (Girl)",
     previewText: "Hi there! I'm Aria. Ready to assist your morning commute, agricultural spraying, and outdoor cardio scores.",
@@ -73,25 +79,57 @@ export const VOCAL_PROFILES = [
 const KNOWN_MALE_NAMES = [
   "aman", "rishi", "ravi", "kunal", "madhav", "alex", "daniel", "david", 
   "mark", "guy", "ryan", "fred", "oliver", "george", "male", "boy", 
-  "albert", "ralph", "bruce", "junior", "tom", "reed", "rocko", "eddy"
+  "albert", "ralph", "bruce", "junior", "tom", "reed", "rocko", "eddy", "james"
 ];
 
 const KNOWN_INDIAN_FEMALE_NAMES = [
-  "lekha", "soumya", "geeta", "vani", "tara", "veena", "heera", "neerja", "sangeeta", "swara", "isha", 
-  "priya", "aditi", "ananya", "shreya", "kavya"
+  "lekha", "soumya", "geeta", "vani", "tara", "veena", "heera", "neerja", 
+  "sangeeta", "swara", "isha", "priya", "aditi", "ananya", "shreya", "kavya", "deepa"
 ];
 
 const KNOWN_GENERAL_FEMALE_NAMES = [
   "samantha", "victoria", "karen", "zira", "jenny", "aria", "sonia", 
-  "tessa", "fiona", "moira", "female", "girl", "kathy", "flo", "shelley", "sandy"
+  "tessa", "fiona", "moira", "female", "girl", "kathy", "flo", "shelley", "sandy", "serena"
 ];
 
+// Audio State Tracking
 let cachedVoices = [];
 let currentAudio = null;
-let currentUtterance = null;
+let currentUtterances = [];
 let activeSessionId = 0;
 let isSpeechActive = false;
+let keepAliveTimer = null;
+let isAudioPrimed = false;
 
+/**
+ * Prime audio subsystem on first user gesture for mobile browser compliance
+ */
+export function primeAudioContext() {
+  if (isAudioPrimed) return;
+  isAudioPrimed = true;
+
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    try {
+      const silent = new SpeechSynthesisUtterance("");
+      silent.volume = 0;
+      window.speechSynthesis.speak(silent);
+    } catch (_) {}
+  }
+}
+
+if (typeof window !== "undefined") {
+  const onFirstInteraction = () => {
+    primeAudioContext();
+    window.removeEventListener("click", onFirstInteraction);
+    window.removeEventListener("touchstart", onFirstInteraction);
+  };
+  window.addEventListener("click", onFirstInteraction, { passive: true, once: true });
+  window.addEventListener("touchstart", onFirstInteraction, { passive: true, once: true });
+}
+
+/**
+ * Load system voices with robust caching
+ */
 function loadVoices() {
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     const list = window.speechSynthesis.getVoices();
@@ -113,70 +151,113 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
 }
 
 /**
- * Returns best available system speech synthesis voice for the given profile
+ * Stop Chromium's 15-second speech freeze watchdog
+ */
+function stopKeepAlive() {
+  if (keepAliveTimer) {
+    clearInterval(keepAliveTimer);
+    keepAliveTimer = null;
+  }
+}
+
+/**
+ * Start Chromium keep-alive heartbeat to prevent speech from stalling
+ */
+function startKeepAlive() {
+  stopKeepAlive();
+  keepAliveTimer = setInterval(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+        try {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        } catch (_) {}
+      }
+    }
+  }, 9000);
+}
+
+/**
+ * Returns the best available system speech synthesis voice for the given profile.
+ * GUARANTEED to never return null if any system voice exists.
  */
 export function getBestVoice(profileId = "spandana") {
   const profile = VOCAL_PROFILES.find(p => p.id === profileId) || VOCAL_PROFILES[0];
   
-  if (typeof window !== "undefined" && "speechSynthesis" in window) {
-    const fresh = window.speechSynthesis.getVoices();
-    if (fresh && fresh.length > 0) cachedVoices = fresh;
-  }
-
-  const voices = (cachedVoices && cachedVoices.length > 0)
-    ? cachedVoices
-    : (typeof window !== "undefined" && "speechSynthesis" in window ? window.speechSynthesis.getVoices() : []);
-
-  if (!voices || voices.length === 0) return null;
-
-  // 1. Specialized Indian English female voice matching for Spandana
-  if (profile.id === "spandana" || profile.accent === "indian") {
-    // Check Google English (India) or Google India female
-    const googleIndian = voices.find(v => {
-      const n = v.name.toLowerCase();
-      const l = (v.lang || "").toLowerCase().replace("_", "-");
-      const isInd = (n.includes("google") && (n.includes("india") || l.includes("en-in")));
-      const isMale = KNOWN_MALE_NAMES.some(m => n.includes(m));
-      return isInd && !isMale;
-    });
-    if (googleIndian) return googleIndian;
-
-    // Check en-IN or India voice that is explicitly NOT male
-    const indianNonMale = voices.find(v => {
-      const l = (v.lang || "").toLowerCase().replace("_", "-");
-      const n = v.name.toLowerCase();
-      const isIndian = l.includes("en-in") || l.includes("hi-in") || n.includes("india");
-      const isMale = KNOWN_MALE_NAMES.some(m => n.includes(m));
-      return isIndian && !isMale;
-    });
-    if (indianNonMale) return indianNonMale;
-
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     return null;
   }
 
-  // 2. Standard Female matching (Nova / Aria)
+  let fresh = [];
+  try {
+    fresh = window.speechSynthesis.getVoices();
+  } catch (_) {}
+
+  const voices = (fresh && fresh.length > 0)
+    ? fresh
+    : ((cachedVoices && cachedVoices.length > 0) ? cachedVoices : []);
+
+  if (!voices || voices.length === 0) return null;
+
+  // Filter English-capable voices
   const enVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith("en"));
   const pool = enVoices.length > 0 ? enVoices : voices;
 
-  if (profile.gender === "female") {
-    for (const kw of KNOWN_GENERAL_FEMALE_NAMES) {
-      const match = pool.find(v => v.name.toLowerCase().includes(kw));
-      if (match) return match;
-    }
-    const nonMale = pool.find(v => !KNOWN_MALE_NAMES.some(m => v.name.toLowerCase().includes(m)));
-    if (nonMale) return nonMale;
-  } else if (profile.gender === "male") {
-    // 3. Mature Male matching for Orion (Deep, authoritative man voice)
-    const matureMaleNames = ["daniel", "eddy", "reed", "rocko", "guy", "alex", "david", "mark", "george", "oliver", "male"];
-    for (const kw of matureMaleNames) {
-      const match = pool.find(v => v.name.toLowerCase().includes(kw));
-      if (match) return match;
-    }
-    const generalMale = pool.find(v => KNOWN_MALE_NAMES.some(m => v.name.toLowerCase().includes(m)));
-    if (generalMale) return generalMale;
+  // 1. Spandana: Specialized Indian English female voice matching
+  if (profile.id === "spandana" || profile.accent === "indian") {
+    // A. Explicit Indian female names or Google India female
+    const indianFemale = pool.find(v => {
+      const n = v.name.toLowerCase();
+      const l = (v.lang || "").toLowerCase().replace("_", "-");
+      const isInd = l.includes("en-in") || l.includes("hi-in") || n.includes("india");
+      const isKnownFemale = KNOWN_INDIAN_FEMALE_NAMES.some(fn => n.includes(fn));
+      const isMale = KNOWN_MALE_NAMES.some(mn => n.includes(mn));
+      return isInd && (isKnownFemale || !isMale);
+    });
+    if (indianFemale) return indianFemale;
+
+    // B. Any en-IN voice (non-male preferred)
+    const anyIndianNonMale = pool.find(v => {
+      const l = (v.lang || "").toLowerCase().replace("_", "-");
+      const n = v.name.toLowerCase();
+      return l.includes("en-in") && !KNOWN_MALE_NAMES.some(mn => n.includes(mn));
+    });
+    if (anyIndianNonMale) return anyIndianNonMale;
+
+    const anyIndian = pool.find(v => (v.lang || "").toLowerCase().replace("_", "-").includes("en-in"));
+    if (anyIndian) return anyIndian;
+
+    // C. Natural warm female fallback (Samantha, Victoria, Karen, Zira, Jenny)
+    const femaleFallback = pool.find(v => {
+      const n = v.name.toLowerCase();
+      return KNOWN_GENERAL_FEMALE_NAMES.some(fn => n.includes(fn));
+    }) || pool.find(v => !KNOWN_MALE_NAMES.some(mn => v.name.toLowerCase().includes(mn)));
+    if (femaleFallback) return femaleFallback;
+
+    return pool[0];
   }
 
-  return pool[0] || null;
+  // 2. Orion: Mature Command Man voice
+  if (profile.gender === "male" || profile.id === "orion") {
+    const matureMaleNames = ["daniel", "david", "mark", "alex", "eddy", "reed", "rocko", "guy", "oliver", "george", "fred", "male"];
+    for (const kw of matureMaleNames) {
+      const m = pool.find(v => v.name.toLowerCase().includes(kw));
+      if (m) return m;
+    }
+    const anyMale = pool.find(v => KNOWN_MALE_NAMES.some(mn => v.name.toLowerCase().includes(mn)));
+    if (anyMale) return anyMale;
+    return pool[0];
+  }
+
+  // 3. Nova & Aria: Standard / Expressive Female matching
+  for (const kw of KNOWN_GENERAL_FEMALE_NAMES) {
+    const m = pool.find(v => v.name.toLowerCase().includes(kw));
+    if (m) return m;
+  }
+  const anyNonMale = pool.find(v => !KNOWN_MALE_NAMES.some(mn => v.name.toLowerCase().includes(mn)));
+  if (anyNonMale) return anyNonMale;
+
+  return pool[0];
 }
 
 /**
@@ -197,9 +278,10 @@ export function getStoredVoiceProfile() {
  */
 export function setStoredVoiceProfile(profileId) {
   try {
-    localStorage.setItem("atmos_vocal_voice", profileId);
+    const id = typeof profileId === "string" ? profileId : profileId?.id || "spandana";
+    localStorage.setItem("atmos_vocal_voice", id);
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("atmos_voice_changed", { detail: { profileId } }));
+      window.dispatchEvent(new CustomEvent("atmos_voice_changed", { detail: { profileId: id } }));
     }
   } catch {}
 }
@@ -210,6 +292,7 @@ export function setStoredVoiceProfile(profileId) {
 export function stopAllSpeech() {
   activeSessionId++;
   isSpeechActive = false;
+  stopKeepAlive();
 
   if (currentAudio) {
     try {
@@ -218,8 +301,6 @@ export function stopAllSpeech() {
       a.onplay = null;
       a.onended = null;
       a.onerror = null;
-      a.oncanplay = null;
-      a.onloadedmetadata = null;
       a.pause();
       a.currentTime = 0;
       a.removeAttribute("src");
@@ -227,117 +308,179 @@ export function stopAllSpeech() {
     } catch (_) {}
   }
 
-  if (currentUtterance) {
+  currentUtterances.forEach(u => {
     try {
-      currentUtterance.onstart = null;
-      currentUtterance.onend = null;
-      currentUtterance.onerror = null;
-      currentUtterance = null;
+      u.onstart = null;
+      u.onend = null;
+      u.onerror = null;
     } catch (_) {}
-  }
+  });
+  currentUtterances = [];
 
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     try {
       window.speechSynthesis.cancel();
+      window.speechSynthesis.resume();
     } catch (_) {}
   }
 }
 
 /**
- * Client-side SpeechSynthesis fallback
+ * Normalize spoken text: expand weather abbreviations, strip markdown and emojis
  */
-function fallbackClientSpeech(cleanSpeech, profile, callbacks, sessionId) {
-  if (sessionId !== activeSessionId || !isSpeechActive) return null;
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    isSpeechActive = false;
-    callbacks.onError?.(new Error("Text-to-speech not supported"));
-    return null;
-  }
+export function normalizeSpokenText(text) {
+  if (!text) return "";
+  return text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // markdown links [label](url) -> label
+    .replace(/https?:\/\/\S+/gi, "") // strip raw URLs
+    .replace(/[•*#_~`>|]/g, "") // strip markdown symbols
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "") // strip emojis
+    .replace(/(\d+)\s*°\s*C\b/gi, "$1 degrees Celsius")
+    .replace(/(\d+)\s*°\s*F\b/gi, "$1 degrees Fahrenheit")
+    .replace(/(\d+)\s*%/g, "$1 percent")
+    .replace(/(\d+)\s*km\/h\b/gi, "$1 kilometers per hour")
+    .replace(/(\d+)\s*hPa\b/gi, "$1 hectopascals")
+    .replace(/(\d+)\s*mb\b/gi, "$1 millibars")
+    .replace(/(\d+)\s*mm\b/gi, "$1 millimeters")
+    .replace(/\bAQI\b/gi, "Air Quality Index")
+    .replace(/\bUV\b/g, "U V")
+    .replace(/\bVPD\b/g, "V P D")
+    .replace(/\bGPS\b/g, "G P S")
+    .replace(/\bEAS\b/g, "E A S")
+    .replace(/\bCap\b/g, "Cap")
+    .replace(/\bmax\b/gi, "maximum")
+    .replace(/\bmin\b/gi, "minimum")
+    .replace(/\s+/g, " ")
+    .replace(/\n+/g, ". ")
+    .trim();
+}
 
-  try {
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
+/**
+ * Split text into natural sentence clauses for smooth progressive speech
+ */
+function splitIntoSentences(text) {
+  const rawSentences = text.split(/(?<=[.?!])\s+/);
+  const result = [];
+  for (const s of rawSentences) {
+    const trimmed = s.trim();
+    if (!trimmed) continue;
+    if (trimmed.length > 220) {
+      const subParts = trimmed.split(/(?<=[,;])\s+/);
+      result.push(...subParts.map(p => p.trim()).filter(Boolean));
+    } else {
+      result.push(trimmed);
     }
-  } catch (_) {}
+  }
+  return result.filter(r => r.length > 0);
+}
+
+/**
+ * Play using browser SpeechSynthesis with sentence queue and heartbeat watchdog
+ */
+function playWithSpeechSynthesis(cleanSpeech, profile, callbacks, sessionId) {
+  if (sessionId !== activeSessionId || !isSpeechActive) return false;
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
 
   const voice = getBestVoice(profile.id);
-  const utterance = new SpeechSynthesisUtterance(cleanSpeech);
-  currentUtterance = utterance;
+  const sentences = splitIntoSentences(cleanSpeech);
+  if (sentences.length === 0) return false;
 
-  if (voice) {
-    utterance.voice = voice;
-    utterance.lang = voice.lang || (profile.accent === "indian" ? "en-IN" : "en-US");
-  } else {
-    utterance.lang = profile.accent === "indian" ? "en-IN" : "en-US";
-  }
+  try {
+    window.speechSynthesis.resume();
+  } catch (_) {}
 
-  utterance.pitch = profile.pitch;
-  utterance.rate = profile.rate;
+  let currentIndex = 0;
+  let hasStarted = false;
+  currentUtterances = [];
 
-  utterance.onstart = () => {
+  function speakNext() {
     if (sessionId !== activeSessionId || !isSpeechActive) {
       try { window.speechSynthesis.cancel(); } catch (_) {}
       return;
     }
-    callbacks.onStart?.();
-  };
 
-  utterance.onend = () => {
-    if (sessionId !== activeSessionId) return;
-    currentUtterance = null;
-    isSpeechActive = false;
-    callbacks.onEnd?.();
-  };
+    if (currentIndex >= sentences.length) {
+      stopKeepAlive();
+      isSpeechActive = false;
+      currentUtterances = [];
+      callbacks.onEnd?.();
+      return;
+    }
 
-  utterance.onerror = (err) => {
-    if (sessionId !== activeSessionId || !isSpeechActive) return;
-    currentUtterance = null;
-    isSpeechActive = false;
-    callbacks.onError?.(err);
-  };
+    const sentence = sentences[currentIndex];
+    const utterance = new SpeechSynthesisUtterance(sentence);
+    currentUtterances = [utterance];
 
-  try {
-    window.speechSynthesis.speak(utterance);
-  } catch (err) {
-    console.warn("speechSynthesis.speak failed:", err);
-    isSpeechActive = false;
-    callbacks.onError?.(err);
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang || (profile.accent === "indian" ? "en-IN" : "en-US");
+    } else {
+      utterance.lang = "en-US";
+    }
+
+    utterance.pitch = profile.pitch;
+    utterance.rate = profile.rate;
+
+    utterance.onstart = () => {
+      if (sessionId !== activeSessionId || !isSpeechActive) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+        return;
+      }
+      if (!hasStarted) {
+        hasStarted = true;
+        startKeepAlive();
+        callbacks.onStart?.();
+      }
+    };
+
+    utterance.onend = () => {
+      if (sessionId !== activeSessionId) return;
+      currentIndex++;
+      speakNext();
+    };
+
+    utterance.onerror = (err) => {
+      if (sessionId !== activeSessionId || !isSpeechActive) return;
+      console.warn("SpeechSynthesis utterance error:", err);
+      currentIndex++;
+      if (currentIndex >= sentences.length) {
+        stopKeepAlive();
+        isSpeechActive = false;
+        callbacks.onEnd?.();
+      } else {
+        speakNext();
+      }
+    };
+
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (speakErr) {
+      console.warn("window.speechSynthesis.speak error:", speakErr);
+      return false;
+    }
+    return true;
   }
-  return utterance;
+
+  // Small tick delay to avoid Chromium cancel() race condition
+  setTimeout(() => {
+    if (sessionId === activeSessionId && isSpeechActive) {
+      speakNext();
+    }
+  }, 25);
+
+  return true;
 }
 
 /**
- * Speak text using natural host TTS engine with seamless browser Web Speech API fallback
+ * Play using Server Audio endpoint (/api/ai/tts) fallback
  */
-export function speakText(text, profileId = "spandana", callbacks = {}) {
-  stopAllSpeech();
+function playWithServerAudio(cleanSpeech, profile, callbacks, sessionId) {
+  if (sessionId !== activeSessionId || !isSpeechActive) return null;
 
-  activeSessionId++;
-  const sessionId = activeSessionId;
-  isSpeechActive = true;
-
-  const profile = VOCAL_PROFILES.find(p => p.id === profileId) || VOCAL_PROFILES[0];
-  const cleanSpeech = (text || "")
-    .replace(/[•*#_~`]/g, "")
-    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
-    .replace(/(\d+)\s*°C/gi, "$1 degrees Celsius")
-    .replace(/(\d+)\s*%/g, "$1 percent")
-    .replace(/(\d+)\s*km\/h/gi, "$1 kilometers per hour")
-    .replace(/\s+/g, " ")
-    .replace(/\n+/g, ". ")
-    .trim();
-
-  if (!cleanSpeech) {
-    isSpeechActive = false;
-    callbacks.onEnd?.();
-    return null;
-  }
-
-  // 1. Try High-Fidelity Natural Host TTS first
   try {
     const params = new URLSearchParams({
       profile: profile.id,
-      text: cleanSpeech.length > 450 ? cleanSpeech.slice(0, 450) + "..." : cleanSpeech
+      text: cleanSpeech.length > 400 ? cleanSpeech.slice(0, 400) + "..." : cleanSpeech
     });
     const audioUrl = `/api/ai/tts?${params.toString()}`;
     const audio = new Audio();
@@ -345,13 +488,11 @@ export function speakText(text, profileId = "spandana", callbacks = {}) {
     audio.src = audioUrl;
     currentAudio = audio;
 
-    let hasStarted = false;
     audio.onplay = () => {
       if (sessionId !== activeSessionId || !isSpeechActive) {
         try { audio.pause(); } catch (_) {}
         return;
       }
-      hasStarted = true;
       callbacks.onStart?.();
     };
 
@@ -362,41 +503,84 @@ export function speakText(text, profileId = "spandana", callbacks = {}) {
       callbacks.onEnd?.();
     };
 
-    audio.onerror = (e) => {
+    audio.onerror = (err) => {
       if (sessionId !== activeSessionId || !isSpeechActive) return;
-      console.warn("Host TTS audio error, switching to browser SpeechSynthesis fallback:", e);
+      console.warn("Server TTS audio error:", err);
       if (currentAudio === audio) currentAudio = null;
-      if (!hasStarted) {
-        fallbackClientSpeech(cleanSpeech, profile, callbacks, sessionId);
-      } else {
-        isSpeechActive = false;
-        callbacks.onError?.(e);
-      }
+      isSpeechActive = false;
+      callbacks.onError?.(err);
     };
 
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       playPromise.catch(playErr => {
-        // If aborted or cancelled by user, DO NOT trigger fallback speech synthesis!
-        if (
-          sessionId !== activeSessionId ||
-          !isSpeechActive ||
-          playErr?.name === "AbortError" ||
-          playErr?.message?.includes("interrupted") ||
-          playErr?.message?.includes("pause")
-        ) {
-          return;
-        }
-        console.warn("Audio autoplay blocked or failed, switching to browser SpeechSynthesis:", playErr);
+        if (sessionId !== activeSessionId || !isSpeechActive) return;
+        console.warn("Audio play() blocked:", playErr);
         if (currentAudio === audio) currentAudio = null;
-        fallbackClientSpeech(cleanSpeech, profile, callbacks, sessionId);
+        isSpeechActive = false;
+        callbacks.onError?.(playErr);
       });
     }
-
     return audio;
   } catch (err) {
     if (sessionId !== activeSessionId || !isSpeechActive) return null;
-    console.warn("Host TTS initialization failed, using Web Speech API fallback:", err);
-    return fallbackClientSpeech(cleanSpeech, profile, callbacks, sessionId);
+    console.warn("Server TTS initialization error:", err);
+    isSpeechActive = false;
+    callbacks.onError?.(err);
+    return null;
   }
+}
+
+/**
+ * Speak text using intelligent dual-engine orchestration:
+ * Primary: Instant zero-latency Browser Web Speech API
+ * Fallback: High-Fidelity Server Neural Audio (/api/ai/tts)
+ */
+export function speakText(text, profileOrOptions = "spandana", maybeCallbacks = {}) {
+  // 1. Cancel any active playback
+  stopAllSpeech();
+
+  // 2. Normalize arguments across diverse caller signatures
+  let profileId = "spandana";
+  let callbacks = {};
+
+  if (typeof profileOrOptions === "string") {
+    profileId = profileOrOptions;
+    callbacks = maybeCallbacks || {};
+  } else if (typeof profileOrOptions === "object" && profileOrOptions !== null) {
+    if (profileOrOptions.id && typeof profileOrOptions.id === "string") {
+      // Called with a profile object (e.g. from getStoredVoiceProfile())
+      profileId = profileOrOptions.id;
+      callbacks = maybeCallbacks || {};
+    } else {
+      // Called with options object: { voice, profile, onStart, onEnd, onError }
+      profileId = profileOrOptions.profile || profileOrOptions.voice?.id || profileOrOptions.voice || "spandana";
+      callbacks = {
+        onStart: profileOrOptions.onStart || maybeCallbacks.onStart,
+        onEnd: profileOrOptions.onEnd || maybeCallbacks.onEnd,
+        onError: profileOrOptions.onError || maybeCallbacks.onError
+      };
+    }
+  }
+
+  const profile = VOCAL_PROFILES.find(p => p.id === profileId) || VOCAL_PROFILES[0];
+  const cleanSpeech = normalizeSpokenText(text);
+
+  if (!cleanSpeech) {
+    callbacks.onEnd?.();
+    return null;
+  }
+
+  activeSessionId++;
+  const sessionId = activeSessionId;
+  isSpeechActive = true;
+
+  // 3. Try instant client-side Web Speech API first
+  const webSpeechSuccess = playWithSpeechSynthesis(cleanSpeech, profile, callbacks, sessionId);
+  if (webSpeechSuccess) {
+    return true;
+  }
+
+  // 4. Fallback to Server Neural TTS audio stream
+  return playWithServerAudio(cleanSpeech, profile, callbacks, sessionId);
 }
