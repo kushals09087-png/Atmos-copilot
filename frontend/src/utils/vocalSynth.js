@@ -14,17 +14,17 @@ export const VOCAL_PROFILES = [
     id: "spandana",
     name: "Spandana",
     gender: "female",
-    genderLabel: "Girl Voice (Indian Accent)",
-    avatar: "👩",
+    genderLabel: "Girl Voice (Fluent Indian English)",
+    avatar: "👧",
     accent: "indian",
     title: "Indian Synoptic Meteorologist",
-    tone: "Clear, warm, melodic Indian girl voice with natural authentic regional accent",
+    tone: "Authentic, fluent Indian English girl voice with natural regional inflection",
     pitch: 1.05,
-    rate: 0.94,
+    rate: 0.98,
     accentColor: "#f59e0b",
-    badge: "Indian Accent (Girl)",
+    badge: "Indian English (Girl)",
     previewText: "Namaste! I am Spandana, your Indian meteorological copilot. I am monitoring live rainfall, monsoon depressions, and district farm weather across India.",
-    tagline: "Authentic, sweet Indian English girl's voice tailored for regional monsoon forecasts and Indian district weather."
+    tagline: "Authentic, fluent Indian English girl's voice tailored for regional monsoon forecasts and Indian district weather."
   },
   {
     id: "nova",
@@ -35,7 +35,7 @@ export const VOCAL_PROFILES = [
     accent: "international",
     title: "Global Meteorological Analyst",
     tone: "Gentle, clear, natural female cadence",
-    pitch: 1.12,
+    pitch: 1.15,
     rate: 1.0,
     accentColor: "#38bdf8",
     badge: "International (Girl)",
@@ -67,7 +67,7 @@ export const VOCAL_PROFILES = [
     accent: "international",
     title: "Dynamic Agronomy & Fitness Guide",
     tone: "Bright, energetic, vibrant female cadence",
-    pitch: 1.25,
+    pitch: 1.26,
     rate: 1.04,
     accentColor: "#f472b6",
     badge: "Expressive (Girl)",
@@ -77,20 +77,53 @@ export const VOCAL_PROFILES = [
 ];
 
 const KNOWN_MALE_NAMES = [
-  "aman", "rishi", "ravi", "kunal", "madhav", "alex", "daniel", "david", 
-  "mark", "guy", "ryan", "fred", "oliver", "george", "male", "boy", 
-  "albert", "ralph", "bruce", "junior", "tom", "reed", "rocko", "eddy", "james"
+  "aman", "rishi", "ravi", "kunal", "madhav", "prabhat", "hemant", "aravind", 
+  "suresh", "rahul", "alex", "daniel", "david", "mark", "ryan", "fred", 
+  "oliver", "george", "albert", "ralph", "bruce", "junior", "tom", "reed", 
+  "rocko", "eddy", "james", "andrew", "brian", "charles", "christopher", 
+  "eric", "jack", "john", "joseph", "kevin", "michael", "paul", "peter", 
+  "richard", "robert", "thomas", "william", "guy", "boy"
 ];
 
 const KNOWN_INDIAN_FEMALE_NAMES = [
-  "lekha", "soumya", "geeta", "vani", "tara", "veena", "heera", "neerja", 
-  "sangeeta", "swara", "isha", "priya", "aditi", "ananya", "shreya", "kavya", "deepa"
+  "tara", "heera", "neerja", "swara", "lekha", "soumya", "geeta", "vani", 
+  "veena", "sangeeta", "isha", "priya", "aditi", "ananya", "shreya", "kavya", 
+  "deepa", "pooja", "sunita", "rekha", "anita", "meera", "divya", "rashmi", 
+  "jyoti", "shruti", "pallavi", "radhika"
 ];
 
 const KNOWN_GENERAL_FEMALE_NAMES = [
   "samantha", "victoria", "karen", "zira", "jenny", "aria", "sonia", 
-  "tessa", "fiona", "moira", "female", "girl", "kathy", "flo", "shelley", "sandy", "serena"
+  "tessa", "fiona", "moira", "kathy", "flo", "shelley", "sandy", 
+  "serena", "hazel", "susan", "eva", "ava", "allison", "cynthia", "agnes"
 ];
+
+const INDIAN_FEMALE_REGEX = new RegExp("\\b(" + KNOWN_INDIAN_FEMALE_NAMES.join("|") + ")\\b", "i");
+const ALL_FEMALE_REGEX = new RegExp("\\b(" + [...KNOWN_INDIAN_FEMALE_NAMES, ...KNOWN_GENERAL_FEMALE_NAMES].join("|") + "|female|girl|woman)\\b", "i");
+const MALE_REGEX = new RegExp("\\b(" + KNOWN_MALE_NAMES.join("|") + "|male|boy|man)\\b", "i");
+
+export function isVoiceFemale(v) {
+  if (!v) return false;
+  const n = (v.name || "").toLowerCase();
+  if (n.includes("google us english") || n.includes("google uk english female")) return true;
+  return ALL_FEMALE_REGEX.test(n);
+}
+
+export function isVoiceMale(v) {
+  if (!v) return false;
+  const n = (v.name || "").toLowerCase();
+  if (isVoiceFemale(v)) return false;
+  if (n === "google english (india)" || n.includes("google english (india)")) return true;
+  if (n.includes("google uk english male")) return true;
+  return MALE_REGEX.test(n);
+}
+
+function isIndianLang(v) {
+  if (!v) return false;
+  const l = (v.lang || "").toLowerCase().replace("_", "-");
+  const n = (v.name || "").toLowerCase();
+  return l.includes("en-in") || l.includes("hi-in") || l.includes("kn-in") || l.includes("ta-in") || l.includes("te-in") || n.includes("india");
+}
 
 // Audio State Tracking
 let cachedVoices = [];
@@ -203,36 +236,32 @@ export function getBestVoice(profileId = "spandana") {
   const enVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith("en"));
   const pool = enVoices.length > 0 ? enVoices : voices;
 
-  // 1. Spandana: Specialized Indian English female voice matching
+  // 1. Spandana: Specialized Indian English female voice matching - 100% Guaranteed Girl Voice
   if (profile.id === "spandana" || profile.accent === "indian") {
-    // A. Explicit Indian female names or Google India female
-    const indianFemale = pool.find(v => {
-      const n = v.name.toLowerCase();
-      const l = (v.lang || "").toLowerCase().replace("_", "-");
-      const isInd = l.includes("en-in") || l.includes("hi-in") || n.includes("india");
-      const isKnownFemale = KNOWN_INDIAN_FEMALE_NAMES.some(fn => n.includes(fn));
-      const isMale = KNOWN_MALE_NAMES.some(mn => n.includes(mn));
-      return isInd && (isKnownFemale || !isMale);
-    });
+    // A. Explicit Indian female voice (Tara, Heera, Neerja, Swara, Lekha, Veena)
+    const indianFemale = pool.find(v => isIndianLang(v) && (INDIAN_FEMALE_REGEX.test(v.name || "") || isVoiceFemale(v)) && !isVoiceMale(v));
     if (indianFemale) return indianFemale;
 
-    // B. Any en-IN voice (non-male preferred)
-    const anyIndianNonMale = pool.find(v => {
-      const l = (v.lang || "").toLowerCase().replace("_", "-");
-      const n = v.name.toLowerCase();
-      return l.includes("en-in") && !KNOWN_MALE_NAMES.some(mn => n.includes(mn));
-    });
-    if (anyIndianNonMale) return anyIndianNonMale;
+    // B. Any voice in pool confirmed Indian and female
+    const anyIndFemale = pool.find(v => isIndianLang(v) && isVoiceFemale(v));
+    if (anyIndFemale) return anyIndFemale;
 
-    const anyIndian = pool.find(v => (v.lang || "").toLowerCase().replace("_", "-").includes("en-in"));
-    if (anyIndian) return anyIndian;
+    // CRITICAL: NEVER return generic en-IN (which selects Aman, Rishi, Prabhat, or Google English India - all boys/men!)
+    // When no authentic Indian female voice is locally installed, use the best crystal-clear girl voice:
 
-    // C. Natural warm female fallback (Samantha, Victoria, Karen, Zira, Jenny)
-    const femaleFallback = pool.find(v => {
-      const n = v.name.toLowerCase();
-      return KNOWN_GENERAL_FEMALE_NAMES.some(fn => n.includes(fn));
-    }) || pool.find(v => !KNOWN_MALE_NAMES.some(mn => v.name.toLowerCase().includes(mn)));
-    if (femaleFallback) return femaleFallback;
+    // C. Known signature English girl/female voices (Samantha on Mac/iOS, Karen, Victoria, Zira/Jenny on Windows, Google US English on Chrome, Flo)
+    for (const kw of ["samantha", "karen", "victoria", "zira", "jenny", "google us english", "google uk english female", "flo", "tessa", "fiona", "moira"]) {
+      const m = pool.find(v => (v.name || "").toLowerCase().includes(kw) && !isVoiceMale(v));
+      if (m) return m;
+    }
+
+    // D. Any confirmed female voice
+    const anyFemale = pool.find(v => isVoiceFemale(v));
+    if (anyFemale) return anyFemale;
+
+    // E. Any non-male voice
+    const nonMale = pool.find(v => !isVoiceMale(v));
+    if (nonMale) return nonMale;
 
     return pool[0];
   }
@@ -241,20 +270,23 @@ export function getBestVoice(profileId = "spandana") {
   if (profile.gender === "male" || profile.id === "orion") {
     const matureMaleNames = ["daniel", "david", "mark", "alex", "eddy", "reed", "rocko", "guy", "oliver", "george", "fred", "male"];
     for (const kw of matureMaleNames) {
-      const m = pool.find(v => v.name.toLowerCase().includes(kw));
+      const m = pool.find(v => (v.name || "").toLowerCase().includes(kw));
       if (m) return m;
     }
-    const anyMale = pool.find(v => KNOWN_MALE_NAMES.some(mn => v.name.toLowerCase().includes(mn)));
+    const anyMale = pool.find(v => isVoiceMale(v));
     if (anyMale) return anyMale;
     return pool[0];
   }
 
   // 3. Nova & Aria: Standard / Expressive Female matching
   for (const kw of KNOWN_GENERAL_FEMALE_NAMES) {
-    const m = pool.find(v => v.name.toLowerCase().includes(kw));
+    const m = pool.find(v => (v.name || "").toLowerCase().includes(kw) && !isVoiceMale(v));
     if (m) return m;
   }
-  const anyNonMale = pool.find(v => !KNOWN_MALE_NAMES.some(mn => v.name.toLowerCase().includes(mn)));
+  const anyFemale = pool.find(v => isVoiceFemale(v));
+  if (anyFemale) return anyFemale;
+
+  const anyNonMale = pool.find(v => !isVoiceMale(v));
   if (anyNonMale) return anyNonMale;
 
   return pool[0];
@@ -415,10 +447,15 @@ function playWithSpeechSynthesis(cleanSpeech, profile, callbacks, sessionId) {
       utterance.voice = voice;
       utterance.lang = voice.lang || (profile.accent === "indian" ? "en-IN" : "en-US");
     } else {
-      utterance.lang = "en-US";
+      utterance.lang = profile.accent === "indian" ? "en-IN" : "en-US";
     }
 
-    utterance.pitch = profile.pitch;
+    // Natural vocal pitch balance
+    if (profile.gender === "female") {
+      utterance.pitch = profile.id === "spandana" ? 1.06 : Math.max(profile.pitch || 1.15, 1.15);
+    } else {
+      utterance.pitch = profile.pitch;
+    }
     utterance.rate = profile.rate;
 
     utterance.onstart = () => {
@@ -505,36 +542,47 @@ function playWithServerAudio(cleanSpeech, profile, callbacks, sessionId) {
 
     audio.onerror = (err) => {
       if (sessionId !== activeSessionId || !isSpeechActive) return;
-      console.warn("Server TTS audio error:", err);
+      console.warn("Server TTS audio error, falling back to browser Web Speech API:", err);
       if (currentAudio === audio) currentAudio = null;
-      isSpeechActive = false;
-      callbacks.onError?.(err);
+      // Seamless fallback to client Web Speech API if server audio fails
+      const fallbackSuccess = playWithSpeechSynthesis(cleanSpeech, profile, callbacks, sessionId);
+      if (!fallbackSuccess) {
+        isSpeechActive = false;
+        callbacks.onError?.(err);
+      }
     };
 
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       playPromise.catch(playErr => {
         if (sessionId !== activeSessionId || !isSpeechActive) return;
-        console.warn("Audio play() blocked:", playErr);
+        console.warn("Audio play() blocked, attempting browser speech synthesis fallback:", playErr);
         if (currentAudio === audio) currentAudio = null;
-        isSpeechActive = false;
-        callbacks.onError?.(playErr);
+        const fallbackSuccess = playWithSpeechSynthesis(cleanSpeech, profile, callbacks, sessionId);
+        if (!fallbackSuccess) {
+          isSpeechActive = false;
+          callbacks.onError?.(playErr);
+        }
       });
     }
     return audio;
   } catch (err) {
     if (sessionId !== activeSessionId || !isSpeechActive) return null;
-    console.warn("Server TTS initialization error:", err);
-    isSpeechActive = false;
-    callbacks.onError?.(err);
+    console.warn("Server TTS initialization error, trying browser speech synthesis:", err);
+    if (currentAudio === audio) currentAudio = null;
+    const fallbackSuccess = playWithSpeechSynthesis(cleanSpeech, profile, callbacks, sessionId);
+    if (!fallbackSuccess) {
+      isSpeechActive = false;
+      callbacks.onError?.(err);
+    }
     return null;
   }
 }
 
 /**
  * Speak text using intelligent dual-engine orchestration:
- * Primary: Instant zero-latency Browser Web Speech API
- * Fallback: High-Fidelity Server Neural Audio (/api/ai/tts)
+ * Spandana (Indian English): High-Fidelity Server Neural Audio (/api/ai/tts - NeerjaNeural / Tara)
+ * Fallback / Other profiles: Instant zero-latency Browser Web Speech API
  */
 export function speakText(text, profileOrOptions = "spandana", maybeCallbacks = {}) {
   // 1. Cancel any active playback
@@ -575,12 +623,21 @@ export function speakText(text, profileOrOptions = "spandana", maybeCallbacks = 
   const sessionId = activeSessionId;
   isSpeechActive = true;
 
-  // 3. Try instant client-side Web Speech API first
+  // 3. For Spandana, ALWAYS prioritize authentic fluent Indian English Neural Voice (/api/ai/tts)
+  // This delivers Azure Neural Indian English (Neerja / Tara) with natural regional pronunciation.
+  if (profile.id === "spandana" || profile.accent === "indian") {
+    const serverAudio = playWithServerAudio(cleanSpeech, profile, callbacks, sessionId);
+    if (serverAudio) {
+      return true;
+    }
+  }
+
+  // 4. Instant client-side Web Speech API (for international voices or when server audio is unavailable)
   const webSpeechSuccess = playWithSpeechSynthesis(cleanSpeech, profile, callbacks, sessionId);
   if (webSpeechSuccess) {
     return true;
   }
 
-  // 4. Fallback to Server Neural TTS audio stream
+  // 5. Final fallback to Server Neural TTS audio stream
   return playWithServerAudio(cleanSpeech, profile, callbacks, sessionId);
 }

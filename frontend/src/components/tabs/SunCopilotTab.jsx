@@ -108,7 +108,7 @@ export default function SunCopilotTab({ coords, weather, onQueryLogged, onNaviga
     return localStorage.getItem("atmos_copilot_autotts") === "true";
   });
   const [currentVoiceId, setCurrentVoiceId] = useState(() => {
-    return localStorage.getItem("atmos_vocal_voice") || "nova";
+    return localStorage.getItem("atmos_vocal_voice") || "spandana";
   });
   const [speakingId, setSpeakingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);

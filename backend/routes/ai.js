@@ -8,6 +8,7 @@ import os from "os";
 import path from "path";
 import crypto from "crypto";
 import https from "https";
+import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
 const router = Router();
 
@@ -426,6 +427,22 @@ async function synthesizeGoogleTts(text, lang = "en-IN") {
 }
 
 /**
+ * Synthesize speech using Microsoft Azure Neural TTS (Edge Read Aloud)
+ * Voice: en-IN-NeerjaNeural (State of the art fluent Indian English female voice)
+ */
+async function synthesizeEdgeTts(text, voice = "en-IN-NeerjaNeural") {
+  const tts = new MsEdgeTTS();
+  await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+  const { audioStream } = await tts.toStream(text);
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    audioStream.on("data", c => chunks.push(c));
+    audioStream.on("end", () => resolve(Buffer.concat(chunks)));
+    audioStream.on("error", reject);
+  });
+}
+
+/**
  * Synthesize speech via host say command in standard AAC format (returns M4A file path)
  */
 function synthesizeHostSay(voiceName, rate, textToSpeak, outputFile) {
@@ -466,30 +483,45 @@ router.get("/tts", async (req, res) => {
     const reqVoice = (req.query.voice || "").toString().trim().toLowerCase();
     const textToSpeak = clean.length > 450 ? clean.slice(0, 450) + "..." : clean;
 
-    // 1. Spandana (Authentic Indian Girl Voice - Crystal Clear)
+    // 1. Spandana (Authentic, Ultra-Fluent Indian Girl Voice - en-IN-NeerjaNeural / Tara)
     if (profile === "spandana" || profile === "indian") {
-      const hash = crypto.createHash("md5").update(`google:en-IN:${textToSpeak}`).digest("hex");
+      const hash = crypto.createHash("md5").update(`edge:en-IN-NeerjaNeural:${textToSpeak}`).digest("hex");
       const cachedFile = path.join(TTS_CACHE_DIR, `${hash}.mp3`);
       if (fs.existsSync(cachedFile)) {
         return res.sendFile(path.resolve(cachedFile));
       }
 
       try {
-        const mp3Buffer = await synthesizeGoogleTts(textToSpeak, "en-IN");
+        const mp3Buffer = await synthesizeEdgeTts(textToSpeak, "en-IN-NeerjaNeural");
         fs.writeFileSync(cachedFile, mp3Buffer);
         return res.sendFile(path.resolve(cachedFile));
-      } catch (googleErr) {
-        console.warn("Google Indian TTS unavailable, falling back to host voice:", googleErr.message);
-        const fallbackVoice = "Tara";
-        const fallbackRate = "144";
-        const fallbackHash = crypto.createHash("md5").update(`say:${fallbackVoice}:${fallbackRate}:${textToSpeak}`).digest("hex");
-        const fallbackFile = path.join(TTS_CACHE_DIR, `${fallbackHash}.m4a`);
-        if (!fs.existsSync(fallbackFile)) {
+      } catch (edgeErr) {
+        console.warn("Edge Neural Indian TTS error, falling back to host Tara:", edgeErr.message);
+        // Fallback 1: Local macOS Tara voice (say -v Tara)
+        try {
+          const fallbackVoice = "Tara";
+          const fallbackRate = "152";
+          const fallbackHash = crypto.createHash("md5").update(`say:${fallbackVoice}:${fallbackRate}:${textToSpeak}`).digest("hex");
+          const fallbackFile = path.join(TTS_CACHE_DIR, `${fallbackHash}.m4a`);
+          if (fs.existsSync(fallbackFile)) {
+            return res.sendFile(path.resolve(fallbackFile));
+          }
           const tempOutput = path.join(TTS_CACHE_DIR, `temp_${fallbackHash}.m4a`);
           await synthesizeHostSay(fallbackVoice, fallbackRate, textToSpeak, tempOutput);
           fs.renameSync(tempOutput, fallbackFile);
+          return res.sendFile(path.resolve(fallbackFile));
+        } catch (hostErr) {
+          console.warn("Host Indian voice Tara unavailable, trying Google female TTS:", hostErr.message);
+          const femaleLang = "en-GB";
+          const gHash = crypto.createHash("md5").update(`google:${femaleLang}:${textToSpeak}`).digest("hex");
+          const gCachedFile = path.join(TTS_CACHE_DIR, `${gHash}.mp3`);
+          if (fs.existsSync(gCachedFile)) {
+            return res.sendFile(path.resolve(gCachedFile));
+          }
+          const mp3Buffer = await synthesizeGoogleTts(textToSpeak, femaleLang);
+          fs.writeFileSync(gCachedFile, mp3Buffer);
+          return res.sendFile(path.resolve(gCachedFile));
         }
-        return res.sendFile(path.resolve(fallbackFile));
       }
     }
 
