@@ -14,17 +14,17 @@ export const VOCAL_PROFILES = [
     id: "spandana",
     name: "Spandana",
     gender: "female",
-    genderLabel: "Girl Voice (Fluent Indian English)",
+    genderLabel: "Girl Voice (Clean Indian English)",
     avatar: "👧",
     accent: "indian",
     title: "Indian Synoptic Meteorologist",
-    tone: "Authentic, fluent Indian English girl voice with natural regional inflection",
-    pitch: 1.05,
-    rate: 0.98,
+    tone: "Clean, articulate Indian English girl voice with clear modern diction",
+    pitch: 1.0,
+    rate: 1.0,
     accentColor: "#f59e0b",
-    badge: "Indian English (Girl)",
+    badge: "Clean Indian English (Girl)",
     previewText: "Namaste! I am Spandana, your Indian meteorological copilot. I am monitoring live rainfall, monsoon depressions, and district farm weather across India.",
-    tagline: "Authentic, fluent Indian English girl's voice tailored for regional monsoon forecasts and Indian district weather."
+    tagline: "Crystal-clean, articulate Indian English girl's voice tailored for regional monsoon forecasts and district weather."
   },
   {
     id: "nova",
