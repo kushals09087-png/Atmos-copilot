@@ -27,6 +27,7 @@ function normalizeSpeechText(text) {
     .replace(/[\uFE0E\uFE0F]/g, "")
     .replace(/[*#_~`]/g, "")
     .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
+    .replace(/\bSpandana\b/gi, "Spundana")
     .replace(/(\d+)\s*°C/gi, "$1 degrees Celsius")
     .replace(/(\d+)\s*%/g, "$1 percent")
     .replace(/(\d+)\s*km\/h/gi, "$1 kilometers per hour")
@@ -483,34 +484,14 @@ router.get("/tts", async (req, res) => {
     const reqVoice = (req.query.voice || "").toString().trim().toLowerCase();
     const textToSpeak = clean.length > 450 ? clean.slice(0, 450) + "..." : clean;
 
-    // 1. Spandana (Clean, Articulate Indian English Girl Voice)
-    if (profile === "spandana" || profile === "indian") {
+    // 1. Sudha Upasana (Normal English Girl Voice - Natural Standard English)
+    if (profile === "spandana" || profile === "sudha" || profile === "upasana" || profile === "standard" || profile === "normal" || profile === "us" || profile === "default") {
       const preferred = (reqVoice || "").toLowerCase();
 
-      // Explicit request for legacy host Tara
-      if (preferred === "tara" && process.platform === "darwin") {
-        const fallbackVoice = "Tara";
-        const fallbackRate = "168";
-        const fallbackHash = crypto.createHash("md5").update(`say:${fallbackVoice}:${fallbackRate}:${textToSpeak}`).digest("hex");
-        const fallbackFile = path.join(TTS_CACHE_DIR, `${fallbackHash}.m4a`);
-        if (fs.existsSync(fallbackFile)) {
-          return res.sendFile(path.resolve(fallbackFile));
-        }
-
-        try {
-          const tempOutput = path.join(TTS_CACHE_DIR, `temp_${fallbackHash}.m4a`);
-          await synthesizeHostSay(fallbackVoice, fallbackRate, textToSpeak, tempOutput);
-          fs.renameSync(tempOutput, fallbackFile);
-          return res.sendFile(path.resolve(fallbackFile));
-        } catch (hostErr) {
-          console.warn("Host voice Tara unavailable:", hostErr.message);
-        }
-      }
-
-      // SOTA: Microsoft Azure Edge Neural Indian English (NeerjaExpressive) at 96kbps
-      // rate: +8% produces clean, articulate modern Indian English without thick/sluggish IVR cadence
-      const voiceName = preferred === "standard" ? "en-IN-NeerjaNeural" : "en-IN-NeerjaExpressiveNeural";
-      const rateOpt = preferred === "standard" ? "+10%" : "+8%";
+      // SOTA: Microsoft Azure Edge Neural Normal Standard English (en-US-JennyNeural / en-US-AvaNeural) at 96kbps 24kHz
+      // Clean, natural, friendly conversational American / Standard English cadence
+      const voiceName = preferred === "ava" ? "en-US-AvaNeural" : (preferred === "aria" ? "en-US-AriaNeural" : "en-US-JennyNeural");
+      const rateOpt = "+0%";
       const hash = crypto.createHash("md5").update(`edge:${voiceName}:${rateOpt}:96k:${textToSpeak}`).digest("hex");
       const cachedFile = path.join(TTS_CACHE_DIR, `${hash}.mp3`);
       if (fs.existsSync(cachedFile)) {
@@ -522,23 +503,76 @@ router.get("/tts", async (req, res) => {
         fs.writeFileSync(cachedFile, mp3Buffer);
         return res.sendFile(path.resolve(cachedFile));
       } catch (edgeErr) {
-        console.warn("Edge Neural Indian TTS primary error, falling back to standard Neerja:", edgeErr.message);
+        console.warn("Edge Neural Normal English TTS primary error, falling back to Ava:", edgeErr.message);
         try {
-          const fallbackBuffer = await synthesizeEdgeTts(textToSpeak, "en-IN-NeerjaNeural", { rate: "+8%" });
+          const fallbackBuffer = await synthesizeEdgeTts(textToSpeak, "en-US-AvaNeural", { rate: "+0%" });
           fs.writeFileSync(cachedFile, fallbackBuffer);
           return res.sendFile(path.resolve(cachedFile));
         } catch (fErr) {
-          console.warn("Edge Neural fallback error, falling back to Google TTS:", fErr.message);
-          const femaleLang = "en-GB";
-          const gHash = crypto.createHash("md5").update(`google:${femaleLang}:${textToSpeak}`).digest("hex");
-          const gCachedFile = path.join(TTS_CACHE_DIR, `${gHash}.mp3`);
-          if (fs.existsSync(gCachedFile)) {
+          console.warn("Edge Neural fallback error, falling back to Google TTS (en-US):", fErr.message);
+          try {
+            const lang = "en-US";
+            const gHash = crypto.createHash("md5").update(`google:${lang}:${textToSpeak}`).digest("hex");
+            const gCachedFile = path.join(TTS_CACHE_DIR, `${gHash}.mp3`);
+            if (fs.existsSync(gCachedFile)) {
+              return res.sendFile(path.resolve(gCachedFile));
+            }
+            const mp3Buffer = await synthesizeGoogleTts(textToSpeak, lang);
+            fs.writeFileSync(gCachedFile, mp3Buffer);
             return res.sendFile(path.resolve(gCachedFile));
+          } catch (gErr) {
+            console.warn("Google TTS fallback error, attempting host Samantha / Flo:", gErr.message);
+            if (process.platform === "darwin") {
+              const hostVoice = "Samantha";
+              const hostHash = crypto.createHash("md5").update(`say:${hostVoice}:165:${textToSpeak}`).digest("hex");
+              const hostFile = path.join(TTS_CACHE_DIR, `${hostHash}.m4a`);
+              if (fs.existsSync(hostFile)) {
+                return res.sendFile(path.resolve(hostFile));
+              }
+              const tempOutput = path.join(TTS_CACHE_DIR, `temp_${hostHash}.m4a`);
+              await synthesizeHostSay(hostVoice, "165", textToSpeak, tempOutput);
+              fs.renameSync(tempOutput, hostFile);
+              return res.sendFile(path.resolve(hostFile));
+            }
+            throw gErr;
           }
-          const mp3Buffer = await synthesizeGoogleTts(textToSpeak, femaleLang);
-          fs.writeFileSync(gCachedFile, mp3Buffer);
-          return res.sendFile(path.resolve(gCachedFile));
         }
+      }
+    }
+
+    // 1b. British English profile if explicitly requested
+    if (profile === "british" || profile === "uk" || profile === "sonia") {
+      const voiceName = "en-GB-SoniaNeural";
+      const rateOpt = "+0%";
+      const hash = crypto.createHash("md5").update(`edge:${voiceName}:${rateOpt}:96k:${textToSpeak}`).digest("hex");
+      const cachedFile = path.join(TTS_CACHE_DIR, `${hash}.mp3`);
+      if (fs.existsSync(cachedFile)) {
+        return res.sendFile(path.resolve(cachedFile));
+      }
+      try {
+        const mp3Buffer = await synthesizeEdgeTts(textToSpeak, voiceName, { rate: rateOpt });
+        fs.writeFileSync(cachedFile, mp3Buffer);
+        return res.sendFile(path.resolve(cachedFile));
+      } catch (bErr) {
+        console.warn("British TTS fallback error:", bErr.message);
+      }
+    }
+
+    // 1c. Legacy Indian English profile if explicitly requested
+    if (profile === "indian") {
+      const voiceName = "en-IN-NeerjaExpressiveNeural";
+      const rateOpt = "+8%";
+      const hash = crypto.createHash("md5").update(`edge:${voiceName}:${rateOpt}:96k:${textToSpeak}`).digest("hex");
+      const cachedFile = path.join(TTS_CACHE_DIR, `${hash}.mp3`);
+      if (fs.existsSync(cachedFile)) {
+        return res.sendFile(path.resolve(cachedFile));
+      }
+      try {
+        const mp3Buffer = await synthesizeEdgeTts(textToSpeak, voiceName, { rate: rateOpt });
+        fs.writeFileSync(cachedFile, mp3Buffer);
+        return res.sendFile(path.resolve(cachedFile));
+      } catch (iErr) {
+        console.warn("Indian TTS fallback error:", iErr.message);
       }
     }
 

@@ -12,19 +12,19 @@
 export const VOCAL_PROFILES = [
   {
     id: "spandana",
-    name: "Spandana",
+    name: "Sudha Upasana",
     gender: "female",
-    genderLabel: "Girl Voice (Clean Indian English)",
+    genderLabel: "Girl Voice (Normal English)",
     avatar: "👧",
-    accent: "indian",
-    title: "Indian Synoptic Meteorologist",
-    tone: "Clean, articulate Indian English girl voice with clear modern diction",
+    accent: "standard",
+    title: "Meteorological Specialist",
+    tone: "Clean, articulate normal English girl voice with natural, friendly diction",
     pitch: 1.0,
     rate: 1.0,
-    accentColor: "#f59e0b",
-    badge: "Clean Indian English (Girl)",
-    previewText: "Namaste! I am Spandana, your Indian meteorological copilot. I am monitoring live rainfall, monsoon depressions, and district farm weather across India.",
-    tagline: "Crystal-clean, articulate Indian English girl's voice tailored for regional monsoon forecasts and district weather."
+    accentColor: "#38bdf8",
+    badge: "Normal English (Girl)",
+    previewText: "Hello! I am Sudha Upasana, your meteorological copilot. I am monitoring live rainfall, pressure systems, and regional weather advisories for your area.",
+    tagline: "Crystal-clear, natural normal English girl's voice tailored for daily meteorological briefings and radar advisories."
   },
   {
     id: "nova",
@@ -86,7 +86,7 @@ const KNOWN_MALE_NAMES = [
 ];
 
 const KNOWN_INDIAN_FEMALE_NAMES = [
-  "tara", "heera", "neerja", "swara", "lekha", "soumya", "geeta", "vani", 
+  "sudha", "upasana", "tara", "heera", "neerja", "swara", "lekha", "soumya", "geeta", "vani", 
   "veena", "sangeeta", "isha", "priya", "aditi", "ananya", "shreya", "kavya", 
   "deepa", "pooja", "sunita", "rekha", "anita", "meera", "divya", "rashmi", 
   "jyoti", "shruti", "pallavi", "radhika"
@@ -123,6 +123,13 @@ function isIndianLang(v) {
   const l = (v.lang || "").toLowerCase().replace("_", "-");
   const n = (v.name || "").toLowerCase();
   return l.includes("en-in") || l.includes("hi-in") || l.includes("kn-in") || l.includes("ta-in") || l.includes("te-in") || n.includes("india");
+}
+
+function isBritishLang(v) {
+  if (!v) return false;
+  const l = (v.lang || "").toLowerCase().replace("_", "-");
+  const n = (v.name || "").toLowerCase();
+  return l.includes("en-gb") || l.includes("en-uk") || n.includes("united kingdom") || n.includes("(uk)") || n.includes("british");
 }
 
 // Audio State Tracking
@@ -215,7 +222,7 @@ function startKeepAlive() {
  * GUARANTEED to never return null if any system voice exists.
  */
 export function getBestVoice(profileId = "spandana") {
-  const profile = VOCAL_PROFILES.find(p => p.id === profileId) || VOCAL_PROFILES[0];
+  const profile = VOCAL_PROFILES.find(p => p.id === profileId || (profileId === "sudha" && p.id === "spandana") || (profileId === "upasana" && p.id === "spandana")) || VOCAL_PROFILES[0];
   
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     return null;
@@ -236,33 +243,46 @@ export function getBestVoice(profileId = "spandana") {
   const enVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith("en"));
   const pool = enVoices.length > 0 ? enVoices : voices;
 
-  // 1. Spandana: Specialized Indian English female voice matching - 100% Guaranteed Girl Voice
-  if (profile.id === "spandana" || profile.accent === "indian") {
-    // A. Explicit Indian female voice (Tara, Heera, Neerja, Swara, Lekha, Veena)
-    const indianFemale = pool.find(v => isIndianLang(v) && (INDIAN_FEMALE_REGEX.test(v.name || "") || isVoiceFemale(v)) && !isVoiceMale(v));
-    if (indianFemale) return indianFemale;
-
-    // B. Any voice in pool confirmed Indian and female
-    const anyIndFemale = pool.find(v => isIndianLang(v) && isVoiceFemale(v));
-    if (anyIndFemale) return anyIndFemale;
-
-    // CRITICAL: NEVER return generic en-IN (which selects Aman, Rishi, Prabhat, or Google English India - all boys/men!)
-    // When no authentic Indian female voice is locally installed, use the best crystal-clear girl voice:
-
-    // C. Known signature English girl/female voices (Samantha on Mac/iOS, Karen, Victoria, Zira/Jenny on Windows, Google US English on Chrome, Flo)
-    for (const kw of ["samantha", "karen", "victoria", "zira", "jenny", "google us english", "google uk english female", "flo", "tessa", "fiona", "moira"]) {
+  // 1. Spandana: Natural Normal English Girl Voice - 100% Guaranteed Girl Voice
+  if (profile.id === "spandana" || profile.accent === "standard") {
+    // A. Premier normal English female voices (Jenny, Ava, Samantha, Google US English, Victoria, Karen, Zira, Allison)
+    for (const kw of ["jenny", "ava", "samantha", "google us english", "victoria", "karen", "zira", "allison"]) {
       const m = pool.find(v => (v.name || "").toLowerCase().includes(kw) && !isVoiceMale(v));
       if (m) return m;
     }
 
-    // D. Any confirmed female voice
-    const anyFemale = pool.find(v => isVoiceFemale(v));
+    // B. Any confirmed female English voice
+    const anyFemale = pool.find(v => (v.lang || "").toLowerCase().startsWith("en") && isVoiceFemale(v) && !isVoiceMale(v));
     if (anyFemale) return anyFemale;
 
-    // E. Any non-male voice
+    // C. Any non-male English voice
+    const anyNonMale = pool.find(v => (v.lang || "").toLowerCase().startsWith("en") && !isVoiceMale(v));
+    if (anyNonMale) return anyNonMale;
+
+    return pool[0];
+  }
+
+  // 1b. British English profile if explicitly selected
+  if (profile.accent === "british" || profile.id === "british" || profile.id === "sonia") {
+    const britishFemale = pool.find(v => isBritishLang(v) && isVoiceFemale(v) && !isVoiceMale(v));
+    if (britishFemale) return britishFemale;
+    for (const kw of ["sonia", "libby", "maisie", "flo (english (uk))", "google uk english female", "serena", "fiona", "victoria"]) {
+      const m = pool.find(v => (v.name || "").toLowerCase().includes(kw) && !isVoiceMale(v));
+      if (m) return m;
+    }
+    const britishNonMale = pool.find(v => isBritishLang(v) && !isVoiceMale(v));
+    if (britishNonMale) return britishNonMale;
+    return pool[0];
+  }
+
+  // 1b. Legacy Indian English profile if explicitly selected
+  if (profile.accent === "indian") {
+    const indianFemale = pool.find(v => isIndianLang(v) && (INDIAN_FEMALE_REGEX.test(v.name || "") || isVoiceFemale(v)) && !isVoiceMale(v));
+    if (indianFemale) return indianFemale;
+    const anyIndFemale = pool.find(v => isIndianLang(v) && isVoiceFemale(v));
+    if (anyIndFemale) return anyIndFemale;
     const nonMale = pool.find(v => !isVoiceMale(v));
     if (nonMale) return nonMale;
-
     return pool[0];
   }
 
@@ -298,7 +318,7 @@ export function getBestVoice(profileId = "spandana") {
 export function getStoredVoiceProfile() {
   try {
     const saved = localStorage.getItem("atmos_vocal_voice");
-    const found = VOCAL_PROFILES.find(p => p.id === saved);
+    const found = VOCAL_PROFILES.find(p => p.id === saved || (saved === "sudha" && p.id === "spandana") || (saved === "upasana" && p.id === "spandana"));
     return found || VOCAL_PROFILES[0];
   } catch {
     return VOCAL_PROFILES[0];
@@ -367,6 +387,7 @@ export function normalizeSpokenText(text) {
     .replace(/https?:\/\/\S+/gi, "") // strip raw URLs
     .replace(/[•*#_~`>|]/g, "") // strip markdown symbols
     .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "") // strip emojis
+    .replace(/\bSpandana\b/gi, "Spundana")
     .replace(/(\d+)\s*°\s*C\b/gi, "$1 degrees Celsius")
     .replace(/(\d+)\s*°\s*F\b/gi, "$1 degrees Fahrenheit")
     .replace(/(\d+)\s*%/g, "$1 percent")
@@ -445,14 +466,14 @@ function playWithSpeechSynthesis(cleanSpeech, profile, callbacks, sessionId) {
 
     if (voice) {
       utterance.voice = voice;
-      utterance.lang = voice.lang || (profile.accent === "indian" ? "en-IN" : "en-US");
+      utterance.lang = voice.lang || (profile.accent === "british" ? "en-GB" : profile.accent === "indian" ? "en-IN" : "en-US");
     } else {
-      utterance.lang = profile.accent === "indian" ? "en-IN" : "en-US";
+      utterance.lang = profile.accent === "british" ? "en-GB" : profile.accent === "indian" ? "en-IN" : "en-US";
     }
 
     // Natural vocal pitch balance
     if (profile.gender === "female") {
-      utterance.pitch = profile.id === "spandana" ? 1.06 : Math.max(profile.pitch || 1.15, 1.15);
+      utterance.pitch = (profile.id === "spandana" || profile.accent === "british") ? 1.0 : Math.max(profile.pitch || 1.15, 1.15);
     } else {
       utterance.pitch = profile.pitch;
     }
@@ -611,7 +632,7 @@ export function speakText(text, profileOrOptions = "spandana", maybeCallbacks = 
     }
   }
 
-  const profile = VOCAL_PROFILES.find(p => p.id === profileId) || VOCAL_PROFILES[0];
+  const profile = VOCAL_PROFILES.find(p => p.id === profileId || (profileId === "sudha" && p.id === "spandana") || (profileId === "upasana" && p.id === "spandana")) || VOCAL_PROFILES[0];
   const cleanSpeech = normalizeSpokenText(text);
 
   if (!cleanSpeech) {
@@ -623,9 +644,9 @@ export function speakText(text, profileOrOptions = "spandana", maybeCallbacks = 
   const sessionId = activeSessionId;
   isSpeechActive = true;
 
-  // 3. For Spandana, ALWAYS prioritize authentic fluent Indian English Neural Voice (/api/ai/tts)
-  // This delivers Azure Neural Indian English (Neerja / Tara) with natural regional pronunciation.
-  if (profile.id === "spandana" || profile.accent === "indian") {
+  // 3. For Spandana, ALWAYS prioritize authentic fluent Normal English Neural Voice (/api/ai/tts)
+  // This delivers Microsoft Edge Neural Jenny at 24kHz 96kbps with pristine, natural standard English diction.
+  if (profile.id === "spandana" || profile.accent === "standard") {
     const serverAudio = playWithServerAudio(cleanSpeech, profile, callbacks, sessionId);
     if (serverAudio) {
       return true;
