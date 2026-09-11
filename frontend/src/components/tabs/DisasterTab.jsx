@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   ShieldAlert,
   ShieldCheck,
@@ -126,6 +126,53 @@ export default function DisasterTab({ weather, coords, lang = "en" }) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [selectedShelterFilter, setSelectedShelterFilter] = useState("all");
   const [selectedProtocolTab, setSelectedProtocolTab] = useState("flood");
+
+  // Touch swipe support for Civil Defense Protocols
+  const protocolTouchRef = useRef({ startX: 0, startY: 0, isMoving: false });
+  const protocolPillsRef = useRef(null);
+
+  const handleProtocolTouchStart = useCallback((e) => {
+    if (e.touches && e.touches.length === 1) {
+      protocolTouchRef.current = {
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        isMoving: true
+      };
+    }
+  }, []);
+
+  const handleProtocolTouchEnd = useCallback((e) => {
+    if (!protocolTouchRef.current.isMoving) return;
+    protocolTouchRef.current.isMoving = false;
+
+    if (e.changedTouches && e.changedTouches.length === 1) {
+      const deltaX = e.changedTouches[0].clientX - protocolTouchRef.current.startX;
+      const deltaY = e.changedTouches[0].clientY - protocolTouchRef.current.startY;
+
+      if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+        const protocols = ["flood", "squall", "lightning", "heat"];
+        const currentIdx = protocols.indexOf(selectedProtocolTab);
+        if (currentIdx !== -1) {
+          if (deltaX < 0) {
+            const nextIdx = (currentIdx + 1) % protocols.length;
+            setSelectedProtocolTab(protocols[nextIdx]);
+          } else {
+            const prevIdx = (currentIdx - 1 + protocols.length) % protocols.length;
+            setSelectedProtocolTab(protocols[prevIdx]);
+          }
+        }
+      }
+    }
+  }, [selectedProtocolTab]);
+
+  useEffect(() => {
+    if (protocolPillsRef.current) {
+      const activeBtn = protocolPillsRef.current.querySelector(".p-tab-btn.active");
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }
+  }, [selectedProtocolTab]);
   const [activeHazardDrawer, setActiveHazardDrawer] = useState("flood");
 
   // 72-Hour Go-Bag Checklist with localStorage Persistence
@@ -756,7 +803,7 @@ STATUS: Civilian assistance / rescue dispatch requested.`;
           </div>
 
           {/* Shelter Category Filter Buttons */}
-          <div className="shelter-filter-pills">
+          <div className="shelter-filter-pills swipeable-pills-strip">
             <button
               className={`s-filter-pill ${selectedShelterFilter === "all" ? "active" : ""}`}
               onClick={() => setSelectedShelterFilter("all")}
@@ -1001,19 +1048,24 @@ STATUS: Civilian assistance / rescue dispatch requested.`;
         </div>
       </div>
 
-      {/* 7. Life-Safety Quick Reference Action Protocols */}
-      <div className="glass card" style={{ marginTop: "1.75rem" }}>
-        <div className="card-header-clean">
+      {/* Civil Defense Emergency Standard Operating Protocols with Touch Swipe */}
+      <div
+        className="glass card civil-defense-protocols-card"
+        onTouchStart={handleProtocolTouchStart}
+        onTouchEnd={handleProtocolTouchEnd}
+        style={{ marginTop: "1.75rem" }}
+      >
+        <div className="card-header-clean protocols-header-row">
           <div>
             <h3 className="subheading">
-              <Compass size={18} className="text-cyan" /> Field Life-Safety Protocols (DO's & DON'Ts)
+              <ShieldAlert size={18} className="text-cyan" /> Civil Defense Action Protocol Matrix
             </h3>
             <p className="text-secondary text-xs">
-              Immediate life-safety procedures vetted by State Disaster Management Authorities
+              Immediate life-safety procedures vetted by State Disaster Management Authorities (Swipe to toggle)
             </p>
           </div>
 
-          <div className="protocol-tab-pills">
+          <div className="protocol-tab-pills swipeable-pills-strip" ref={protocolPillsRef}>
             <button
               className={`p-tab-btn ${selectedProtocolTab === "flood" ? "active" : ""}`}
               onClick={() => setSelectedProtocolTab("flood")}

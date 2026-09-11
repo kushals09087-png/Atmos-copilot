@@ -766,7 +766,7 @@ export default function SatelliteTab({ coords, weather, onSelectLocation, onOpen
               </div>
 
               {/* Bottom Time Interval Scrub Pills */}
-              <div className="timeline-intervals-row">
+              <div className="timeline-intervals-row swipeable-pills-strip">
                 {TIMELINE_STEPS.map((step) => {
                   const isActive = timelineInterval === step;
                   return (

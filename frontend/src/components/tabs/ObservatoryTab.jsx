@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Navigation,
   Droplets,
@@ -24,6 +24,8 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Radar,
   Eye,
   Scan,
@@ -176,6 +178,81 @@ export default function ObservatoryTab({
   const [hoveredHourIdx, setHoveredHourIdx] = useState(null);
   const [locateFeedback, setLocateFeedback] = useState(null);
 
+  // Touch swipe support for Diurnal Trend Vectors (swiping left/right cycles through metrics)
+  const diurnalTouchRef = useRef({ startX: 0, startY: 0, isMoving: false });
+  const diurnalPillsRef = useRef(null);
+
+  const handleDiurnalTouchStart = useCallback((e) => {
+    if (e.touches && e.touches.length === 1) {
+      diurnalTouchRef.current = {
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        isMoving: true
+      };
+    }
+  }, []);
+
+  const handleDiurnalTouchEnd = useCallback((e) => {
+    if (!diurnalTouchRef.current.isMoving) return;
+    diurnalTouchRef.current.isMoving = false;
+
+    if (e.changedTouches && e.changedTouches.length === 1) {
+      const deltaX = e.changedTouches[0].clientX - diurnalTouchRef.current.startX;
+      const deltaY = e.changedTouches[0].clientY - diurnalTouchRef.current.startY;
+
+      // Horizontal swipe threshold: 38px and predominantly horizontal
+      if (Math.abs(deltaX) > 38 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+        const metricOrder = ["temp", "precip", "wind", "dew"];
+        const currentIdx = metricOrder.indexOf(trendMetric);
+        if (currentIdx !== -1) {
+          if (deltaX < 0) {
+            // Swiped left -> next metric
+            const nextIdx = (currentIdx + 1) % metricOrder.length;
+            setTrendMetric(metricOrder[nextIdx]);
+          } else {
+            // Swiped right -> prev metric
+            const prevIdx = (currentIdx - 1 + metricOrder.length) % metricOrder.length;
+            setTrendMetric(metricOrder[prevIdx]);
+          }
+        }
+      }
+    }
+  }, [trendMetric]);
+
+  // Scroll active diurnal pill into view smoothly when metric changes
+  useEffect(() => {
+    if (diurnalPillsRef.current) {
+      const activePill = diurnalPillsRef.current.querySelector(".pill-btn.active");
+      if (activePill) {
+        activePill.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }
+  }, [trendMetric]);
+
+  // Touch swipe support for Radar / Sounding visualizer card
+  const vizTouchRef = useRef({ startX: 0, startY: 0, isMoving: false });
+  const handleVizTouchStart = useCallback((e) => {
+    if (e.touches && e.touches.length === 1) {
+      vizTouchRef.current = {
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        isMoving: true
+      };
+    }
+  }, []);
+
+  const handleVizTouchEnd = useCallback((e) => {
+    if (!vizTouchRef.current.isMoving) return;
+    vizTouchRef.current.isMoving = false;
+    if (e.changedTouches && e.changedTouches.length === 1) {
+      const deltaX = e.changedTouches[0].clientX - vizTouchRef.current.startX;
+      const deltaY = e.changedTouches[0].clientY - vizTouchRef.current.startY;
+      if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+        setActiveVisualizer(v => (v === "radar" ? "sounding" : "radar"));
+      }
+    }
+  }, []);
+
   async function handleLocateMe() {
     if (!onRefreshGps) return;
     try {
@@ -258,6 +335,14 @@ export default function ObservatoryTab({
   const tempSuffix = tempUnit === "F" ? "°F" : "°C";
   const windSuffix = windUnit === "mph" ? "mph" : windUnit === "kts" ? "kts" : "km/h";
   const pressureSuffix = pressureUnit === "inHg" ? "inHg" : pressureUnit === "mmHg" ? "mmHg" : "hPa";
+
+  // Diurnal metrics configuration
+  const DIURNAL_METRICS = useMemo(() => [
+    { id: "temp", label: "Temperature", shortLabel: "Temp", suffix: `(${tempSuffix})`, icon: Thermometer, color: "#38bdf8" },
+    { id: "precip", label: "Precipitation", shortLabel: "Precip", suffix: "(%)", icon: CloudRain, color: "#60a5fa" },
+    { id: "wind", label: "Wind Velocity", shortLabel: "Wind", suffix: `(${windSuffix})`, icon: Wind, color: "#34d399" },
+    { id: "dew", label: "Dew Point Spread", shortLabel: "Dew Point", suffix: "(Δ°)", icon: Droplets, color: "#a78bfa" }
+  ], [tempSuffix, windSuffix]);
 
   // Solar trajectory & lunar phase calculations
   const solar = useMemo(
@@ -707,7 +792,11 @@ export default function ObservatoryTab({
         </div>
 
         {/* Live Doppler Radar Sweep & Micro-Sounding Visualizer */}
-        <div className="radar-sounding-card glass">
+        <div
+          className="radar-sounding-card glass"
+          onTouchStart={handleVizTouchStart}
+          onTouchEnd={handleVizTouchEnd}
+        >
           <div className="card-header-clean">
             <div className="flex-row gap-sm">
               <div className="modal-icon-badge cyan-glow">
@@ -1060,45 +1149,60 @@ export default function ObservatoryTab({
         </div>
       </div>
 
-      {/* Diurnal Trend Vectors (24h Curve with Interactive Inspection) */}
-      <div className="diurnal-section-card glass">
+      {/* Diurnal Trend Vectors (24h Curve with Interactive Inspection & Touch Swipe) */}
+      <div
+        className="diurnal-section-card glass"
+        onTouchStart={handleDiurnalTouchStart}
+        onTouchEnd={handleDiurnalTouchEnd}
+      >
         <div className="diurnal-header">
-          <div>
+          <div className="diurnal-title-wrap">
             <h3 className="subheading">Diurnal Trend Vectors</h3>
             <p className="text-secondary text-sm">
               Continuous 24-hour meteorological projection for {cityName.split(",")[0]}
             </p>
           </div>
 
-          <div className="metric-switcher-pills">
-            <button
-              type="button"
-              className={`pill-btn ${trendMetric === "temp" ? "active" : ""}`}
-              onClick={() => setTrendMetric("temp")}
-            >
-              Temperature ({tempSuffix})
-            </button>
-            <button
-              type="button"
-              className={`pill-btn ${trendMetric === "precip" ? "active" : ""}`}
-              onClick={() => setTrendMetric("precip")}
-            >
-              Precipitation (%)
-            </button>
-            <button
-              type="button"
-              className={`pill-btn ${trendMetric === "wind" ? "active" : ""}`}
-              onClick={() => setTrendMetric("wind")}
-            >
-              Wind Velocity ({windSuffix})
-            </button>
-            <button
-              type="button"
-              className={`pill-btn ${trendMetric === "dew" ? "active" : ""}`}
-              onClick={() => setTrendMetric("dew")}
-            >
-              Dew Point Spread
-            </button>
+          <div className="diurnal-switcher-wrap">
+            <div className="metric-switcher-pills swipeable-pills-strip" ref={diurnalPillsRef}>
+              {DIURNAL_METRICS.map((m) => {
+                const Icon = m.icon;
+                const isActive = trendMetric === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`pill-btn ${isActive ? "active" : ""}`}
+                    onClick={() => setTrendMetric(m.id)}
+                    style={{ "--pill-active-color": m.color }}
+                  >
+                    <Icon size={14} className="pill-icon" />
+                    <span className="pill-text-full">{m.label} {m.suffix}</span>
+                    <span className="pill-text-compact">{m.shortLabel} {m.suffix}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Mobile swipe hint and metric step indicators */}
+            <div className="diurnal-swipe-indicators">
+              <span className="diurnal-swipe-hint">
+                <ChevronLeft size={13} className="swipe-arrow text-cyan" /> Swipe chart or pills <ChevronRight size={13} className="swipe-arrow text-cyan" />
+              </span>
+              <div className="diurnal-dots-row">
+                {DIURNAL_METRICS.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`diurnal-dot ${trendMetric === m.id ? "active" : ""}`}
+                    onClick={() => setTrendMetric(m.id)}
+                    title={`Switch to ${m.label}`}
+                    aria-label={`Switch to ${m.label}`}
+                    style={{ backgroundColor: trendMetric === m.id ? m.color : undefined }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1167,8 +1271,19 @@ export default function ObservatoryTab({
                           onMouseEnter={() => setHoveredHourIdx(i)}
                           onMouseLeave={() => setHoveredHourIdx(null)}
                           onClick={() => setHoveredHourIdx(isHovered ? null : i)}
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            setHoveredHourIdx(isHovered ? null : i);
+                          }}
                           style={{ cursor: "pointer" }}
                         >
+                          {/* Invisible expanded hit target for touch accessibility on phones */}
+                          <circle
+                            cx={pt.x}
+                            cy={pt.y}
+                            r="18"
+                            fill="transparent"
+                          />
                           <circle
                             cx={pt.x}
                             cy={pt.y}
@@ -1211,12 +1326,12 @@ export default function ObservatoryTab({
                     })}
                   </svg>
 
-                  {/* Interactive Diurnal Hover Tooltip */}
+                  {/* Interactive Diurnal Hover Tooltip (Clamped to prevent mobile cutoff) */}
                   {hoveredHourIdx !== null && coordsList[hoveredHourIdx] && (
                     <div
                       className="diurnal-hover-tooltip glass"
                       style={{
-                        left: `${(coordsList[hoveredHourIdx].x / width) * 100}%`
+                        left: `${Math.min(84, Math.max(16, (coordsList[hoveredHourIdx].x / width) * 100))}%`
                       }}
                     >
                       <div className="tooltip-title font-mono">{coordsList[hoveredHourIdx].time}</div>

@@ -4656,13 +4656,142 @@ nav {
   margin-bottom: 16px;
 }
 
+.diurnal-switcher-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 100%;
+}
+
 .metric-switcher-pills {
   display: flex;
   gap: 6px;
   background: var(--pill-bg);
   border: 1px solid var(--pill-border);
-  padding: 3px;
-  border-radius: 10px;
+  padding: 4px;
+  border-radius: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+.metric-switcher-pills::-webkit-scrollbar {
+  display: none;
+}
+
+/* Universal Pill Button Styles */
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pill-btn:hover {
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--text-heading);
+  border-color: rgba(56, 189, 248, 0.25);
+}
+
+.pill-btn:active {
+  transform: scale(0.96);
+}
+
+.pill-btn.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(14, 165, 233, 0.1) 100%);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.pill-btn .pill-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.pill-btn.active .pill-icon {
+  transform: scale(1.1);
+  color: var(--pill-active-color, #38bdf8);
+}
+
+.pill-text-compact {
+  display: none;
+}
+
+/* Diurnal Mobile Swipe Indicators */
+.diurnal-swipe-indicators {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 0;
+}
+
+.diurnal-swipe-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.diurnal-dots-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.diurnal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.35);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.diurnal-dot.active {
+  width: 16px;
+  background: var(--cyan);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+}
+
+/* Light mode overrides for universal pill-btn */
+[data-theme="light"] .pill-btn {
+  color: #475569;
+}
+
+[data-theme="light"] .pill-btn:hover {
+  background: #f8fafc;
+  color: #0284c7;
+  border-color: #cbd5e1;
+}
+
+[data-theme="light"] .pill-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+}
+
+[data-theme="light"] .pill-btn.active .pill-icon {
+  color: #ffffff;
 }
 
 .diurnal-chart-wrap {
@@ -8075,6 +8204,95 @@ textarea,
     padding: 10px 8px !important;
   }
 
+  /* Diurnal Trend Vectors Mobile Swipe & Layout */
+  .diurnal-section-card {
+    padding: 16px 12px !important;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  .diurnal-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .diurnal-switcher-wrap {
+    width: 100% !important;
+  }
+
+  .metric-switcher-pills {
+    width: 100% !important;
+    padding: 4px !important;
+    gap: 6px !important;
+    background: rgba(15, 23, 42, 0.85) !important;
+    border: 1px solid rgba(56, 189, 248, 0.28) !important;
+  }
+
+  .pill-btn {
+    padding: 7px 11px !important;
+    font-size: 11.5px !important;
+    border-radius: 8px !important;
+  }
+
+  .diurnal-swipe-indicators {
+    display: flex !important;
+  }
+
+  /* Universal Swipeable Option Strips Across All Tabs on Mobile */
+  .swipeable-pills-strip,
+  .metric-switcher-pills,
+  .visualizer-toggle-pills,
+  .scenario-tabs-pills,
+  .protocol-tab-pills,
+  .shelter-filter-pills,
+  .variable-switcher-group,
+  .horizon-pill-group,
+  .timeline-intervals-row,
+  .city-quick-pills,
+  .recent-pills-row,
+  .copilot-suggestions {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex-wrap: nowrap !important;
+    max-width: 100% !important;
+    padding-bottom: 4px !important;
+    gap: 8px !important;
+  }
+
+  .swipeable-pills-strip::-webkit-scrollbar,
+  .metric-switcher-pills::-webkit-scrollbar,
+  .visualizer-toggle-pills::-webkit-scrollbar,
+  .scenario-tabs-pills::-webkit-scrollbar,
+  .protocol-tab-pills::-webkit-scrollbar,
+  .shelter-filter-pills::-webkit-scrollbar,
+  .variable-switcher-group::-webkit-scrollbar,
+  .horizon-pill-group::-webkit-scrollbar,
+  .timeline-intervals-row::-webkit-scrollbar,
+  .city-quick-pills::-webkit-scrollbar,
+  .recent-pills-row::-webkit-scrollbar,
+  .copilot-suggestions::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .swipeable-pills-strip > *,
+  .metric-switcher-pills > *,
+  .visualizer-toggle-pills > *,
+  .scenario-tabs-pills > *,
+  .protocol-tab-pills > *,
+  .shelter-filter-pills > *,
+  .variable-switcher-group > *,
+  .horizon-pill-group > *,
+  .timeline-intervals-row > *,
+  .city-quick-pills > *,
+  .recent-pills-row > *,
+  .copilot-suggestions > * {
+    flex-shrink: 0 !important;
+    scroll-snap-align: start !important;
+  }
+
   /* Satellite & Doppler Radar on Mobile */
   .satellite-viewer-wrap {
     height: 350px !important;
@@ -8119,6 +8337,17 @@ textarea,
    5. ULTRA-COMPACT SMARTPHONES (<= 480px)
    ========================================================================== */
 @media (max-width: 480px) {
+  .pill-text-full {
+    display: none !important;
+  }
+  .pill-text-compact {
+    display: inline !important;
+  }
+  .pill-btn {
+    padding: 7px 10px !important;
+    font-size: 11px !important;
+  }
+
   .main-content-layout {
     padding: 68px 8px 24px !important;
   }

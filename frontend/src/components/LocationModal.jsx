@@ -257,7 +257,7 @@ export default function LocationModal({ isOpen, onClose, onSelectLocation, curre
             <div className="section-meta-lbl">
               <Clock size={12} /> Recent Stations
             </div>
-            <div className="recent-pills-row">
+            <div className="recent-pills-row swipeable-pills-strip">
               {recentLocations.map((r, idx) => (
                 <button
                   key={idx}

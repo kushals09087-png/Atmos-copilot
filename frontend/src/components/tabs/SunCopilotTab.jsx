@@ -499,7 +499,7 @@ export default function SunCopilotTab({ coords, weather, onQueryLogged, onNaviga
           <span className="persona-bar-title">Advisory Intelligence Persona:</span>
           <span className="persona-desc-hint">{activePersonaObj.description}</span>
         </div>
-        <div className="persona-pills-row">
+        <div className="persona-pills-row swipeable-pills-strip">
           {PERSONAS.map(persona => {
             const Icon = persona.icon;
             const isActive = selectedPersona === persona.id;
@@ -695,7 +695,7 @@ export default function SunCopilotTab({ coords, weather, onQueryLogged, onNaviga
         <span className="suggestions-badge">
           <Sparkles size={13} /> Suggested Prompts for {activePersonaObj.label}:
         </span>
-        <div className="copilot-suggestions">
+        <div className="copilot-suggestions swipeable-pills-strip">
           {currentSuggestions.map((s, idx) => (
             <button key={idx} type="button" onClick={() => handleSend(s)} className="suggestion-chip">
               {s}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   History,
   TrendingUp,
@@ -424,6 +424,65 @@ export default function ClimateTab({ weather, coords, lang = "en" }) {
   const [showRegressionLine, setShowRegressionLine] = useState(true);
   const [copiedState, setCopiedState] = useState(false);
 
+  // Touch swipe support for Climate Studio chart (swiping cycles through metrics)
+  const climateTouchRef = useRef({ startX: 0, startY: 0, isMoving: false });
+  const variableGroupRef = useRef(null);
+  const scenarioGroupRef = useRef(null);
+
+  const handleClimateTouchStart = useCallback((e) => {
+    if (e.touches && e.touches.length === 1) {
+      climateTouchRef.current = {
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        isMoving: true
+      };
+    }
+  }, []);
+
+  const handleClimateTouchEnd = useCallback((e) => {
+    if (!climateTouchRef.current.isMoving) return;
+    climateTouchRef.current.isMoving = false;
+
+    if (e.changedTouches && e.changedTouches.length === 1) {
+      const deltaX = e.changedTouches[0].clientX - climateTouchRef.current.startX;
+      const deltaY = e.changedTouches[0].clientY - climateTouchRef.current.startY;
+
+      if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+        const metricKeys = Object.keys(CLIMATE_METRICS_DATA);
+        const currentIdx = metricKeys.indexOf(metricKey);
+        if (currentIdx !== -1) {
+          if (deltaX < 0) {
+            const nextIdx = (currentIdx + 1) % metricKeys.length;
+            setMetricKey(metricKeys[nextIdx]);
+            setHoveredPointIdx(null);
+          } else {
+            const prevIdx = (currentIdx - 1 + metricKeys.length) % metricKeys.length;
+            setMetricKey(metricKeys[prevIdx]);
+            setHoveredPointIdx(null);
+          }
+        }
+      }
+    }
+  }, [metricKey]);
+
+  useEffect(() => {
+    if (variableGroupRef.current) {
+      const activeBtn = variableGroupRef.current.querySelector(".variable-tab-btn.active");
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }
+  }, [metricKey]);
+
+  useEffect(() => {
+    if (scenarioGroupRef.current) {
+      const activeBtn = scenarioGroupRef.current.querySelector(".scenario-pill-btn.active");
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }
+  }, [activeScenario]);
+
   const city = weather?.resolved_city || "Station Coordinates";
   const currentMetricObj = CLIMATE_METRICS_DATA[metricKey] || CLIMATE_METRICS_DATA.temp;
   const currentDataset = currentMetricObj.horizons[timeframe] || currentMetricObj.horizons["50y"];
@@ -588,7 +647,7 @@ PROJECTED 2050 PATHWAY (SSP2-4.5): +2.1°C Mean Shift, +11.8% Monsoonal Volatili
       {/* 3. Multi-Variable Studio Controls (Variable Tabs & Horizon Selector) */}
       <div className="climate-studio-toolbar glass">
         {/* Variable Switcher */}
-        <div className="variable-switcher-group">
+        <div className="variable-switcher-group swipeable-pills-strip" ref={variableGroupRef}>
           {Object.entries(CLIMATE_METRICS_DATA).map(([k, item]) => {
             const Icon = item.icon;
             const isActive = metricKey === k;
@@ -610,7 +669,7 @@ PROJECTED 2050 PATHWAY (SSP2-4.5): +2.1°C Mean Shift, +11.8% Monsoonal Volatili
         </div>
 
         {/* Time Horizon Selector */}
-        <div className="tab-pill-group horizon-pill-group">
+        <div className="tab-pill-group horizon-pill-group swipeable-pills-strip">
           {[
             { id: "50y", label: "50 Years" },
             { id: "10y", label: "10 Years" },
@@ -670,8 +729,12 @@ PROJECTED 2050 PATHWAY (SSP2-4.5): +2.1°C Mean Shift, +11.8% Monsoonal Volatili
         </div>
       </div>
 
-      {/* 5. Interactive Reanalysis Studio Chart with SVG Inspection */}
-      <div className="glass card reanalysis-studio-card">
+      {/* 5. Interactive Reanalysis Studio Chart with SVG Inspection & Touch Swipe */}
+      <div
+        className="glass card reanalysis-studio-card"
+        onTouchStart={handleClimateTouchStart}
+        onTouchEnd={handleClimateTouchEnd}
+      >
         <div className="card-header-clean chart-header-row">
           <div>
             <h3 className="subheading chart-title">
@@ -899,7 +962,7 @@ PROJECTED 2050 PATHWAY (SSP2-4.5): +2.1°C Mean Shift, +11.8% Monsoonal Volatili
           </div>
 
           {/* Scenario Selector Tabs */}
-          <div className="scenario-tabs-pills">
+          <div className="scenario-tabs-pills swipeable-pills-strip" ref={scenarioGroupRef}>
             {Object.values(IPCC_SCENARIOS).map((sc) => (
               <button
                 key={sc.id}

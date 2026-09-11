@@ -35,7 +35,7 @@ export default function WeatherMap({ location, data, onSelectCity }) {
             <span><Navigation size={15} /> Wind: {Math.round(data?.current?.wind_speed_10m ?? 0)} km/h</span>
             <span><Layers size={15} /> Pressure: {Math.round(data?.current?.surface_pressure ?? 1013)} hPa</span>
           </div>
-          <div className="city-quick-pills">
+          <div className="city-quick-pills swipeable-pills-strip">
             {popularCities.map(c => (
               <button
                 key={c.name}
